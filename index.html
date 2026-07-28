@@ -497,20 +497,23 @@ function showCaseStatus(code){
   document.getElementById('caso-code-display').textContent = code;
 
   // Listen for real-time changes
-  db.ref('casos/' + code).on('value', (snap) => {
-    const caso = snap.val();
+  db.ref('casos/' + code).on('value', function(snap) {
+    var caso = snap.val();
     if(!caso) return;
     renderSemaforo(caso, code);
   });
 }
 
+var currentCaseCode = '';
+
 function renderSemaforo(caso, code){
+  currentCaseCode = code;
   document.getElementById('cat-elegida').textContent = caso.categoria || '';
-  const piloto = document.getElementById('piloto');
-  const estadoTxt = document.getElementById('estado-txt');
-  const detalleTxt = document.getElementById('estado-detalle');
-  const revealBox = document.getElementById('reveal-box');
-  const calBox = document.getElementById('calificacion-box');
+  var piloto = document.getElementById('piloto');
+  var estadoTxt = document.getElementById('estado-txt');
+  var detalleTxt = document.getElementById('estado-detalle');
+  var revealBox = document.getElementById('reveal-box');
+  var calBox = document.getElementById('calificacion-box');
   revealBox.innerHTML = '';
   calBox.innerHTML = '';
 
@@ -526,7 +529,7 @@ function renderSemaforo(caso, code){
       revealBox.innerHTML = '<div class="tech-reveal"><div class="ph"></div><div><b>' + caso.tecnico + '</b><br><a href="https://wa.me/57' + caso.tecnicoWa + '" target="_blank" class="wa-link">💬 Chatear por WhatsApp</a></div></div>';
     }
     if(caso.direccion && caso.direccion !== 'No especificada'){
-      const wazeUrl = 'https://waze.com/ul?q=' + encodeURIComponent(caso.direccion + ', Jamundí') + '&navigate=yes';
+      var wazeUrl = 'https://waze.com/ul?q=' + encodeURIComponent(caso.direccion + ', Jamundí') + '&navigate=yes';
       revealBox.innerHTML += '<div style="margin-top:8px;"><a href="' + wazeUrl + '" target="_blank" class="waze-link">📍 Ver dirección en Waze</a></div>';
     }
   } else if(caso.estado === 'verde'){
@@ -537,19 +540,20 @@ function renderSemaforo(caso, code){
     } else {
       detalleTxt.textContent = '¿Cómo calificarías el servicio?';
       calBox.innerHTML = '<div class="rate-row" id="rate-row">' +
-        '<span onclick="calificarCaso(\'' + code + '\',1)">★</span>' +
-        '<span onclick="calificarCaso(\'' + code + '\',2)">★</span>' +
-        '<span onclick="calificarCaso(\'' + code + '\',3)">★</span>' +
-        '<span onclick="calificarCaso(\'' + code + '\',4)">★</span>' +
-        '<span onclick="calificarCaso(\'' + code + '\',5)">★</span></div>';
+        '<span onclick="calificarCaso(1)">★</span>' +
+        '<span onclick="calificarCaso(2)">★</span>' +
+        '<span onclick="calificarCaso(3)">★</span>' +
+        '<span onclick="calificarCaso(4)">★</span>' +
+        '<span onclick="calificarCaso(5)">★</span></div>';
     }
   }
 }
 
-function calificarCaso(code, stars){
+function calificarCaso(stars){
+  var code = currentCaseCode;
   db.ref('casos/' + code).update({calificacion: stars});
-  const spans = document.getElementById('rate-row').children;
-  for(let i=0;i<spans.length;i++){ spans[i].classList.toggle('on', i<stars); }
+  var spans = document.getElementById('rate-row').children;
+  for(var i=0;i<spans.length;i++){ spans[i].classList.toggle('on', i<stars); }
 }
 
 // ---- CONSULT EXISTING CASE ----
@@ -568,13 +572,19 @@ function volverInicio(){
 }
 
 function consultarCaso(){
-  const code = document.getElementById('consultar-code').value.trim().toUpperCase();
+  var code = document.getElementById('consultar-code').value.trim().toUpperCase();
   if(!code){ alert('Escribe el código de tu caso'); return; }
-  db.ref('casos/' + code).once('value').then(snap => {
-    if(!snap.exists()){ alert('No se encontró el caso ' + code); return; }
-    localStorage.setItem('mf_last_case', code);
-    showCaseStatus(code);
-  });
+  try {
+    db.ref('casos/' + code).once('value').then(function(snap) {
+      if(!snap.exists()){ alert('No se encontró el caso ' + code); return; }
+      localStorage.setItem('mf_last_case', code);
+      showCaseStatus(code);
+    }).catch(function(err){
+      alert('Error al consultar: ' + err.message);
+    });
+  } catch(e) {
+    alert('Error: ' + e.message);
+  }
 }
 
 function resetCliente(){
@@ -592,19 +602,30 @@ function resetCliente(){
 
 // Check on load if there's a pending case
 function checkLastCase(){
-  const lastCode = localStorage.getItem('mf_last_case');
+  var lastCode = localStorage.getItem('mf_last_case');
   if(!lastCode) return;
-  db.ref('casos/' + lastCode).once('value').then(snap => {
+  db.ref('casos/' + lastCode).once('value').then(function(snap) {
     if(!snap.exists()) return;
-    const caso = snap.val();
-    if(caso.estado === 'verde' && caso.calificacion > 0) return; // Already done
-    const banner = document.createElement('div');
+    var caso = snap.val();
+    if(caso.estado === 'verde' && caso.calificacion > 0) return;
+    var banner = document.createElement('div');
     banner.className = 'card';
     banner.style.cssText = 'text-align:center;margin-bottom:14px;border-color:var(--yellow);';
-    banner.innerHTML = '<p style="margin:0 0 8px;font-size:13px;"><b>Tienes un caso activo:</b> ' + lastCode + '</p><button class="btn btn-primary" onclick="this.parentElement.remove();showCaseStatus(\'' + lastCode + '\')">Ver estado de mi caso</button>';
-    const form = document.getElementById('cliente-form');
+    var p = document.createElement('p');
+    p.style.cssText = 'margin:0 0 8px;font-size:13px;';
+    p.innerHTML = '<b>Tienes un caso activo:</b> ' + lastCode;
+    var btn = document.createElement('button');
+    btn.className = 'btn btn-primary';
+    btn.textContent = 'Ver estado de mi caso';
+    btn.addEventListener('click', function(){
+      banner.remove();
+      showCaseStatus(lastCode);
+    });
+    banner.appendChild(p);
+    banner.appendChild(btn);
+    var form = document.getElementById('cliente-form');
     form.insertBefore(banner, form.firstChild);
-  });
+  }).catch(function(err){ console.log('checkLastCase error:', err); });
 }
 
 // ---- ADMIN (NEGOCIO) PANEL ----
