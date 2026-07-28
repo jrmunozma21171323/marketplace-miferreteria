@@ -230,12 +230,6 @@ tr:last-child td{border-bottom:none;}
   <!-- ========== CLIENTE ========== -->
   <div id="view-cliente" class="view active">
     <div id="cliente-form">
-      <div class="how-it-works">
-        <div class="how-step"><div class="how-num">1</div><div><h3>Escoge el servicio</h3><p>Elige la categoría y describe el daño</p></div></div>
-        <div class="how-step"><div class="how-num">2</div><div><h3>Un técnico te atiende</h3><p>Te asignamos uno verificado cerca de ti</p></div></div>
-        <div class="how-step"><div class="how-num">3</div><div><h3>Califica el servicio</h3><p>Tu opinión protege a la comunidad</p></div></div>
-      </div>
-
       <div class="tagline-carousel">
         <h2 class="tagline-text" id="tagline-text">Aquí consigues el técnico que necesitas para tu hogar o negocio</h2>
       </div>
@@ -429,29 +423,48 @@ function previewPhoto(e){
 }
 
 function submitCase(){
-  const chosen = Array.from(document.querySelectorAll('#damage-chips .dmg-chip.on')).map(c=>c.textContent);
-  const categoria = selectedCat ? selectedCat.name : 'No especificada';
-  const damage = chosen.length ? chosen.join(', ') : categoria;
-  const address = document.getElementById('address-input').value.trim();
-  const contacto = document.getElementById('contact-input').value.trim();
+  var chosen = [];
+  document.querySelectorAll('#damage-chips .dmg-chip.on').forEach(function(c){chosen.push(c.textContent)});
+  var categoria = selectedCat ? selectedCat.name : 'No especificada';
+  var damage = chosen.length ? chosen.join(', ') : categoria;
+  var address = document.getElementById('address-input').value.trim();
+  var contacto = document.getElementById('contact-input').value.trim();
   if(!contacto){alert('Escribe tu nombre y WhatsApp');return;}
-  const code='JAM-'+Math.floor(1000+Math.random()*9000);
-  db.ref('casos/'+code).set({codigo:code,categoria:categoria,dano:damage,direccion:address||'No especificada',cliente:contacto,estado:'rojo',fecha:new Date().toISOString(),tecnico:'',tecnicoWa:'',calificacion:0}).then(()=>{
+  var code='JAM-'+Math.floor(1000+Math.random()*9000);
+
+  // 1) Mostrar semáforo INMEDIATAMENTE
+  document.getElementById('cliente-form').style.display='none';
+  document.getElementById('cliente-estado').style.display='block';
+  document.getElementById('caso-code-display').textContent=code;
+  document.getElementById('cat-elegida').textContent=categoria;
+  document.getElementById('piloto').className='piloto roja';
+  document.getElementById('estado-txt').textContent='Buscando técnico...';
+  document.getElementById('estado-detalle').textContent='Caso '+code+' publicado para '+categoria+'.';
+  currentCaseCode=code;
+
+  // 2) Guardar en Firebase en segundo plano
+  var caso={codigo:code,categoria:categoria,dano:damage,direccion:address||'No especificada',cliente:contacto,estado:'rojo',fecha:new Date().toISOString(),tecnico:'',tecnicoWa:'',calificacion:0};
+  try{
+    db.ref('casos/'+code).set(caso);
     localStorage.setItem('mf_last_case',code);
-    window.open('https://wa.me/573244779393?text='+encodeURIComponent('🔧 NUEVA SOLICITUD\n🔖 '+code+'\n📋 '+categoria+'\n🔍 '+damage+'\n📍 '+(address||'N/A')+'\n👤 '+contacto),'_blank');
-    document.getElementById('cliente-form').style.display='none';
-    document.getElementById('cliente-estado').style.display='block';
-    document.getElementById('caso-code-display').textContent=code;
-    document.getElementById('cat-elegida').textContent=categoria;
-    currentCaseCode=code;
-    db.ref('casos/'+code).on('value',snap=>{const c=snap.val();if(!c)return;
-      const p=document.getElementById('piloto'),et=document.getElementById('estado-txt'),ed=document.getElementById('estado-detalle'),rb=document.getElementById('reveal-box');
-      rb.innerHTML='';
-      if(c.estado==='rojo'){p.className='piloto roja';et.textContent='Buscando técnico...';ed.textContent='Caso '+code+' publicado para '+c.categoria+'.';}
-      else if(c.estado==='amarillo'){p.className='piloto amarilla';et.textContent='¡Un técnico tomó tu caso!';ed.textContent=(c.tecnico||'Técnico')+' va a atenderte.';if(c.tecnicoWa)rb.innerHTML='<div class="tech-reveal"><div class="ph"></div><div><b>'+c.tecnico+'</b><br><a href="https://wa.me/57'+c.tecnicoWa+'" target="_blank" class="wa-link">💬 WhatsApp</a></div></div>';}
-      else if(c.estado==='verde'){p.className='piloto verde';et.textContent='Servicio completado ✓';ed.textContent='¡Gracias!';}
-    });
-  }).catch(err=>alert('Error: '+err.message));
+  }catch(e){console.log('Firebase error:',e);}
+
+  // 3) Escuchar cambios en tiempo real
+  db.ref('casos/'+code).on('value',function(snap){
+    var c=snap.val();if(!c)return;
+    var p=document.getElementById('piloto');
+    var et=document.getElementById('estado-txt');
+    var ed=document.getElementById('estado-detalle');
+    var rb=document.getElementById('reveal-box');
+    rb.innerHTML='';
+    if(c.estado==='rojo'){p.className='piloto roja';et.textContent='Buscando técnico...';ed.textContent='Caso '+code+' publicado para '+c.categoria+'.';}
+    else if(c.estado==='amarillo'){p.className='piloto amarilla';et.textContent='¡Un técnico tomó tu caso!';ed.textContent=(c.tecnico||'Técnico')+' va a atenderte.';if(c.tecnicoWa)rb.innerHTML='<div class="tech-reveal"><div class="ph"></div><div><b>'+c.tecnico+'</b><br><a href="https://wa.me/57'+c.tecnicoWa+'" target="_blank" class="wa-link">💬 WhatsApp</a></div></div>';}
+    else if(c.estado==='verde'){p.className='piloto verde';et.textContent='Servicio completado ✓';ed.textContent='¡Gracias!';}
+  });
+
+  // 4) Abrir WhatsApp al final
+  var waMsg=encodeURIComponent('🔧 NUEVA SOLICITUD\n🔖 '+code+'\n📋 '+categoria+'\n🔍 '+damage+'\n📍 '+(address||'N/A')+'\n👤 '+contacto);
+  window.open('https://wa.me/573244779393?text='+waMsg,'_blank');
 }
 
 function loadAdminCases(){
