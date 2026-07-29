@@ -472,19 +472,35 @@ function submitCase(){
   window.open('https://wa.me/573244779393?text='+waMsg,'_blank');
 }
 
+function actualizarSemaforo(c,code){
+  var p=document.getElementById('piloto');
+  var et=document.getElementById('estado-txt');
+  var ed=document.getElementById('estado-detalle');
+  var rb=document.getElementById('reveal-box');
+  rb.innerHTML='';
+  if(c.estado==='rojo'){
+    p.className='piloto roja';p.style.background='#C43D2E';
+    et.textContent='Buscando técnico...';
+    ed.textContent='Caso '+code+' publicado para '+c.categoria+'.';
+  } else if(c.estado==='amarillo'){
+    p.className='piloto amarilla';p.style.background='#F2B705';
+    et.textContent='¡Un técnico tomó tu caso!';
+    ed.textContent=(c.tecnico||'Técnico')+' va a atenderte.';
+    if(c.tecnicoWa)rb.innerHTML='<div class="tech-reveal"><div class="ph"></div><div><b>'+c.tecnico+'</b><br><a href="https://wa.me/57'+c.tecnicoWa+'" target="_blank" class="wa-link">💬 WhatsApp</a></div></div>';
+  } else if(c.estado==='verde'){
+    p.className='piloto verde';p.style.background='#3C8F5C';
+    et.textContent='Servicio completado ✓';
+    ed.textContent='¡Gracias!';
+    if(semaforoInterval)clearInterval(semaforoInterval);
+  }
+}
+
 function startPolling(code){
   if(semaforoInterval) clearInterval(semaforoInterval);
   semaforoInterval=setInterval(function(){
     fetch(FBURL+'/casos/'+code+'.json').then(function(r){return r.json()}).then(function(c){
       if(!c) return;
-      var p=document.getElementById('piloto');
-      var et=document.getElementById('estado-txt');
-      var ed=document.getElementById('estado-detalle');
-      var rb=document.getElementById('reveal-box');
-      rb.innerHTML='';
-      if(c.estado==='rojo'){p.className='piloto roja';et.textContent='Buscando técnico...';ed.textContent='Caso '+code+' publicado para '+c.categoria+'.';}
-      else if(c.estado==='amarillo'){p.className='piloto amarilla';et.textContent='¡Un técnico tomó tu caso!';ed.textContent=(c.tecnico||'Técnico')+' va a atenderte.';if(c.tecnicoWa)rb.innerHTML='<div class="tech-reveal"><div class="ph"></div><div><b>'+c.tecnico+'</b><br><a href="https://wa.me/57'+c.tecnicoWa+'" target="_blank" class="wa-link">💬 WhatsApp</a></div></div>';}
-      else if(c.estado==='verde'){p.className='piloto verde';et.textContent='Servicio completado ✓';ed.textContent='¡Gracias!';clearInterval(semaforoInterval);}
+      actualizarSemaforo(c,code);
     });
   },5000);
 }
@@ -550,14 +566,7 @@ function consultarCaso(){
   localStorage.setItem('mf_last_case',code);
   fetch(FBURL+'/casos/'+code+'.json').then(function(r){return r.json()}).then(function(c){
     if(!c){document.getElementById('estado-detalle').textContent='No se encontró el caso '+code;return;}
-    var p=document.getElementById('piloto');
-    var et=document.getElementById('estado-txt');
-    var ed=document.getElementById('estado-detalle');
-    var rb=document.getElementById('reveal-box');
-    rb.innerHTML='';
-    if(c.estado==='rojo'){p.className='piloto roja';et.textContent='Buscando técnico...';ed.textContent='Caso '+code+' publicado para '+c.categoria+'.';}
-    else if(c.estado==='amarillo'){p.className='piloto amarilla';et.textContent='¡Un técnico tomó tu caso!';ed.textContent=(c.tecnico||'Técnico')+' va a atenderte.';if(c.tecnicoWa)rb.innerHTML='<div class="tech-reveal"><div class="ph"></div><div><b>'+c.tecnico+'</b><br><a href="https://wa.me/57'+c.tecnicoWa+'" target="_blank" class="wa-link">💬 WhatsApp</a></div></div>';}
-    else if(c.estado==='verde'){p.className='piloto verde';et.textContent='Servicio completado ✓';ed.textContent='¡Gracias!';}
+    actualizarSemaforo(c,code);
     startPolling(code);
   }).catch(function(err){document.getElementById('estado-detalle').textContent='Error: '+err.message;});
 }
