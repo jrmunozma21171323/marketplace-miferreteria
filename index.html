@@ -210,9 +210,9 @@ tr:last-child td{border-bottom:none;}
       <div class="brand-mark"><svg viewBox="0 0 24 24" fill="none"><path d="M14.7 6.3a1 1 0 011.4 0l1.6 1.6a1 1 0 010 1.4l-1.6 1.6-3-3 1.6-1.6zM5 19l3-1 8-8-3-3-8 8-1 3z" stroke="#F2B705" stroke-width="1.4" stroke-linejoin="round"/></svg></div>
       <div><h1>MI FERRETERÍA</h1><p>Tu técnico de confianza · Jamundí</p></div>
     </div>
-    <a href="https://wa.me/573162100289" target="_blank" class="header-wa">
+    <a href="https://wa.me/573244779393" target="_blank" class="header-wa">
       <svg viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.832-1.438A9.955 9.955 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2z"/></svg>
-      316 210 0289
+      324 477 9393
     </a>
     <div class="tabs">
       <button class="active" data-view="cliente" onclick="switchView('cliente')">Cliente</button>
@@ -442,12 +442,14 @@ function submitCase(){
   document.getElementById('estado-detalle').textContent='Caso '+code+' publicado para '+categoria+'.';
   currentCaseCode=code;
 
-  // 2) Guardar en Firebase en segundo plano
+  // 2) Guardar en Firebase
   var caso={codigo:code,categoria:categoria,dano:damage,direccion:address||'No especificada',cliente:contacto,estado:'rojo',fecha:new Date().toISOString(),tecnico:'',tecnicoWa:'',calificacion:0};
-  try{
-    db.ref('casos/'+code).set(caso);
-    localStorage.setItem('mf_last_case',code);
-  }catch(e){console.log('Firebase error:',e);}
+  localStorage.setItem('mf_last_case',code);
+  db.ref('casos/'+code).set(caso).then(function(){
+    document.getElementById('estado-detalle').textContent='✅ Caso '+code+' guardado. Publicado para '+categoria+'.';
+  }).catch(function(err){
+    document.getElementById('estado-detalle').textContent='⚠️ Error guardando: '+err.message;
+  });
 
   // 3) Escuchar cambios en tiempo real
   db.ref('casos/'+code).on('value',function(snap){
@@ -469,7 +471,7 @@ function submitCase(){
 
 function loadAdminCases(){
   var c=document.getElementById('admin-cases');if(!c)return;
-  c.innerHTML='<p style="color:var(--steel)">Cargando...</p>';
+  c.innerHTML='<p style="color:var(--steel)">Cargando desde Firebase...</p>';
   db.ref('casos').orderByChild('fecha').once('value').then(snap=>{
     var arr=[];snap.forEach(ch=>{arr.push(ch.val())});arr.reverse();
     if(!arr.length){c.innerHTML='<p style="color:var(--steel)">No hay casos.</p>';return;}
@@ -480,8 +482,8 @@ function loadAdminCases(){
       else if(x.estado==='amarillo')act=`<button class="btn btn-primary" onclick="completarCaso('${x.codigo}')">Completado</button>`;
       else act='<span class="badge verificado">✓ '+(x.calificacion>0?x.calificacion+'★':'Pendiente')+'</span>';
       h+=`<div class="case-row" style="border-left:4px solid ${col}"><div class="case-info"><div style="width:12px;height:12px;border-radius:50%;background:${col};flex-shrink:0"></div><div><b>${x.codigo}</b> — ${x.categoria}<div class="sub">${x.dano}</div><div class="sub">📍 ${x.direccion} · 👤 ${x.cliente}</div>${x.tecnico?'<div class="sub" style="color:var(--teal)">Técnico: '+x.tecnico+'</div>':''}</div></div>${act}</div>`;
-    });c.innerHTML=h;
-  });
+    });c.innerHTML=h||'<p>No hay casos.</p>';
+  }).catch(function(err){c.innerHTML='<p style="color:var(--rust)">Error Firebase: '+err.message+'</p>';});
 }
 function asignarTec(code){
   var n=prompt('Nombre del técnico:');if(!n)return;
