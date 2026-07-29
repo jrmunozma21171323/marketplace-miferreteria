@@ -473,29 +473,29 @@ function submitCase(){
 }
 
 function actualizarSemaforo(c,code){
-  var p=document.getElementById('piloto');
   var et=document.getElementById('estado-txt');
   var ed=document.getElementById('estado-detalle');
   var rb=document.getElementById('reveal-box');
   rb.innerHTML='';
+  var oldP=document.getElementById('piloto');
+  var newP=document.createElement('div');
+  newP.id='piloto';
   if(c.estado==='rojo'){
-    p.setAttribute('class','piloto roja');
-    p.setAttribute('style','background:#C43D2E !important');
+    newP.className='piloto roja';
     et.textContent='Buscando técnico...';
     ed.textContent='Caso '+code+' publicado para '+c.categoria+'.';
   } else if(c.estado==='amarillo'){
-    p.setAttribute('class','piloto amarilla');
-    p.setAttribute('style','background:#F2B705 !important');
+    newP.className='piloto amarilla';
     et.textContent='¡Un técnico tomó tu caso!';
     ed.textContent=(c.tecnico||'Técnico')+' va a atenderte.';
     if(c.tecnicoWa)rb.innerHTML='<div class="tech-reveal"><div class="ph"></div><div><b>'+c.tecnico+'</b><br><a href="https://wa.me/57'+c.tecnicoWa+'" target="_blank" class="wa-link">💬 WhatsApp</a></div></div>';
   } else if(c.estado==='verde'){
-    p.setAttribute('class','piloto verde');
-    p.setAttribute('style','background:#3C8F5C !important');
+    newP.className='piloto verde';
     et.textContent='Servicio completado ✓';
     ed.textContent='¡Gracias!';
     if(semaforoInterval)clearInterval(semaforoInterval);
   }
+  oldP.parentNode.replaceChild(newP,oldP);
 }
 
 function startPolling(code){
