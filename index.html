@@ -214,15 +214,15 @@ tr:last-child td{border-bottom:none;}
     </a>
     <div class="tabs">
       <button class="active" data-view="cliente" onclick="switchView('cliente')">Cliente</button>
-      <button data-view="tecnico" onclick="switchView('tecnico')">Técnico</button>
-      <button data-view="negocio" onclick="switchView('negocio')">Negocio</button>
+      <button data-view="tecnico" onclick="switchView('tecnico')" class="admin-only" style="display:none">Técnico</button>
+      <button data-view="negocio" onclick="switchView('negocio')" class="admin-only" style="display:none">Negocio</button>
     </div>
   </header>
 
   <nav class="mobile-tabbar">
     <button class="active" data-view="cliente" onclick="switchView('cliente')"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.4"/><path d="M5 20c0-4 3-6.5 7-6.5s7 2.5 7 6.5"/></svg>Cliente</button>
-    <button data-view="tecnico" onclick="switchView('tecnico')"><svg viewBox="0 0 24 24"><rect x="3" y="9" width="18" height="10" rx="1.5"/><path d="M8 9V6a4 4 0 018 0v3"/></svg>Técnico</button>
-    <button data-view="negocio" onclick="switchView('negocio')"><svg viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="12" rx="1.5"/><path d="M8 8V6a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>Negocio</button>
+    <button data-view="tecnico" onclick="switchView('tecnico')" class="admin-only" style="display:none"><svg viewBox="0 0 24 24"><rect x="3" y="9" width="18" height="10" rx="1.5"/><path d="M8 9V6a4 4 0 018 0v3"/></svg>Técnico</button>
+    <button data-view="negocio" onclick="switchView('negocio')" class="admin-only" style="display:none"><svg viewBox="0 0 24 24"><rect x="3" y="8" width="18" height="12" rx="1.5"/><path d="M8 8V6a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>Negocio</button>
   </nav>
 
   <!-- ========== CLIENTE ========== -->
@@ -489,7 +489,8 @@ function submitCase(){
   });
 
   var waMsg='🔧 NUEVA SOLICITUD\n🔖 '+code+'\n📋 '+categoria+'\n🔍 '+damage+'\n📍 '+(address||'N/A')+(ubicacionLink?'\n🗺️ Ubicación: '+ubicacionLink:'')+'\n👤 '+nombre+'\n📱 '+celular;
-  window.open('https://wa.me/573244779393?text='+encodeURIComponent(waMsg),'_blank');
+  var waUrl='https://wa.me/573244779393?text='+encodeURIComponent(waMsg);
+  document.getElementById('reveal-box').innerHTML='<div style="text-align:center;margin-top:10px"><a href="'+waUrl+'" target="_blank" class="btn btn-primary" style="display:inline-block;text-decoration:none;background:var(--wa);color:#fff;padding:14px 24px;font-size:14px">📩 Enviar solicitud por WhatsApp</a><p style="font-size:11px;color:var(--steel);margin:8px 0 0">Toca para notificar a Mi Ferretería de tu solicitud</p></div>';
 }
 
 function actualizarSemaforo(c,code){
@@ -534,7 +535,8 @@ function loadAdminCases(){
     if(!data){c.innerHTML='<p style="color:var(--steel)">No hay casos.</p>';return;}
     var arr=[];for(var k in data){if(data.hasOwnProperty(k))arr.push(data[k]);}
     arr.sort(function(a,b){return b.fecha>a.fecha?1:-1;});
-    var h='';
+    var hActivos='';
+    var hCerrados='';
     for(var i=0;i<arr.length;i++){
       var x=arr[i];
       var col=x.estado==='rojo'?'#C43D2E':x.estado==='amarillo'?'#F2B705':'#3C8F5C';
@@ -546,9 +548,15 @@ function loadAdminCases(){
       if(x.ubicacionLink)gpsLink='<div class="sub"><a href="'+x.ubicacionLink+'" target="_blank" style="color:#2E6FE0;font-weight:700;font-size:11px;text-decoration:none">🗺️ Ver ubicación en Waze</a></div>';
       var fechaTxt='';
       if(x.fecha){var d=new Date(x.fecha);fechaTxt=d.toLocaleDateString('es-CO')+' '+d.toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'});}
-      h+='<div class="case-row" style="border-left:4px solid '+col+'"><div class="case-info"><div style="width:12px;height:12px;border-radius:50%;background:'+col+';flex-shrink:0"></div><div><b>'+x.codigo+'</b> — '+x.categoria+'<div class="sub">'+x.dano+'</div><div class="sub">📍 '+x.direccion+' · 👤 '+x.cliente+'</div><div class="sub">🕐 '+fechaTxt+'</div>'+gpsLink+(x.tecnico?'<div class="sub" style="color:var(--teal)">Técnico: '+x.tecnico+'</div>':'')+'</div></div>'+act+'</div>';
+      var row='<div class="case-row" style="border-left:4px solid '+col+'"><div class="case-info"><div style="width:12px;height:12px;border-radius:50%;background:'+col+';flex-shrink:0"></div><div><b>'+x.codigo+'</b> — '+x.categoria+'<div class="sub">'+x.dano+'</div><div class="sub">📍 '+x.direccion+' · 👤 '+x.cliente+'</div><div class="sub">🕐 '+fechaTxt+'</div>'+gpsLink+(x.tecnico?'<div class="sub" style="color:var(--teal)">Técnico: '+x.tecnico+'</div>':'')+'</div></div>'+act+'</div>';
+      if(x.estado==='verde')hCerrados+=row;
+      else hActivos+=row;
     }
-    c.innerHTML=h||'<p>No hay casos.</p>';
+    var resultado='';
+    if(hActivos)resultado+=hActivos;
+    else resultado+='<p style="color:var(--steel);font-size:12px">No hay casos activos.</p>';
+    if(hCerrados)resultado+='<h2 class="section-title" style="margin-top:20px;color:var(--steel)">Casos cerrados</h2>'+hCerrados;
+    c.innerHTML=resultado;
   }).catch(function(err){c.innerHTML='<p style="color:red">Error: '+err.message+'</p>';});
 }
 function asignarTec(code){
@@ -693,6 +701,11 @@ function completeCase(btn){ btn.closest('.case-row').querySelector('button').out
 function openPkg(){ document.getElementById('pkg-overlay').classList.add('on'); }
 function closePkg(){ document.getElementById('pkg-overlay').classList.remove('on'); }
 function buyPkg(n){ credits += n; updateCredits(); closePkg(); }
+// Show admin tabs if ?admin=1 in URL
+if(window.location.search.indexOf('admin=1')!==-1){
+  var adminBtns=document.querySelectorAll('.admin-only');
+  for(var i=0;i<adminBtns.length;i++)adminBtns[i].style.display='';
+}
 checkLastCase();
 </script>
 </body>
