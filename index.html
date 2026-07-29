@@ -399,7 +399,7 @@ function switchView(v){
   if(v==='negocio')loadAdminCases();
 }
 
-// Categories rendered in static HTML
+/// Categories rendered in static HTML
 
 let selectedCat = null;
 let uploadedPhoto = null;
@@ -489,8 +489,8 @@ function loadAdminCases(){
       var x=arr[i];
       var col=x.estado==='rojo'?'#C43D2E':x.estado==='amarillo'?'#F2B705':'#3C8F5C';
       var act='';
-      if(x.estado==='rojo')act='<button class="btn btn-primary" onclick="asignarTec(''+x.codigo+'')">Asignar técnico</button>';
-      else if(x.estado==='amarillo')act='<button class="btn btn-primary" onclick="completarCaso(''+x.codigo+'')">Completado</button>';
+      if(x.estado==='rojo')act='<button class="btn btn-primary" onclick="asignarTec(\x27'+x.codigo+'\x27)">Asignar técnico</button>';
+      else if(x.estado==='amarillo')act='<button class="btn btn-primary" onclick="completarCaso(\x27'+x.codigo+'\x27)">Completado</button>';
       else act='<span class="badge verificado">✓ '+(x.calificacion>0?x.calificacion+'★':'Pendiente')+'</span>';
       h+='<div class="case-row" style="border-left:4px solid '+col+'"><div class="case-info"><div style="width:12px;height:12px;border-radius:50%;background:'+col+';flex-shrink:0"></div><div><b>'+x.codigo+'</b> — '+x.categoria+'<div class="sub">'+x.dano+'</div><div class="sub">📍 '+x.direccion+' · 👤 '+x.cliente+'</div>'+(x.tecnico?'<div class="sub" style="color:var(--teal)">Técnico: '+x.tecnico+'</div>':'')+'</div></div>'+act+'</div>';
     }
