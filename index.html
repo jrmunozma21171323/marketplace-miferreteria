@@ -312,7 +312,9 @@ tr:last-child td{border-bottom:none;}
         <p style="font-size:11px;color:var(--steel);margin:6px 0 0">Guárdalo para consultar después</p>
       </div>
       <div class="semaforo-card">
-        <div class="piloto roja" id="piloto"></div>
+        <div id="sem-rojo" class="piloto roja"></div>
+        <div id="sem-amarillo" class="piloto amarilla" style="display:none"></div>
+        <div id="sem-verde" class="piloto verde" style="display:none"></div>
         <div class="semaforo-text">
           <p class="estado" id="estado-txt">Buscando técnico...</p>
           <p class="detalle" id="estado-detalle">Tu caso ya está publicado para <span id="cat-elegida"></span>.</p>
@@ -466,7 +468,9 @@ function submitCase(){
   document.getElementById('cliente-estado').style.display='block';
   document.getElementById('caso-code-display').textContent=code;
   document.getElementById('cat-elegida').textContent=categoria;
-  document.getElementById('piloto').className='piloto roja';
+  document.getElementById('sem-rojo').style.display='block';
+  document.getElementById('sem-amarillo').style.display='none';
+  document.getElementById('sem-verde').style.display='none';
   document.getElementById('estado-txt').textContent='Buscando técnico...';
   document.getElementById('estado-detalle').textContent='Guardando caso...';
   currentCaseCode=code;
@@ -493,25 +497,24 @@ function actualizarSemaforo(c,code){
   var ed=document.getElementById('estado-detalle');
   var rb=document.getElementById('reveal-box');
   rb.innerHTML='';
-  var oldP=document.getElementById('piloto');
-  var newP=document.createElement('div');
-  newP.id='piloto';
+  document.getElementById('sem-rojo').style.display='none';
+  document.getElementById('sem-amarillo').style.display='none';
+  document.getElementById('sem-verde').style.display='none';
   if(c.estado==='rojo'){
-    newP.className='piloto roja';
+    document.getElementById('sem-rojo').style.display='block';
     et.textContent='Buscando técnico...';
     ed.textContent='Caso '+code+' publicado para '+c.categoria+'.';
   } else if(c.estado==='amarillo'){
-    newP.className='piloto amarilla';
+    document.getElementById('sem-amarillo').style.display='block';
     et.textContent='¡Un técnico tomó tu caso!';
     ed.textContent=(c.tecnico||'Técnico')+' va a atenderte.';
     if(c.tecnicoWa)rb.innerHTML='<div class="tech-reveal"><div class="ph"></div><div><b>'+c.tecnico+'</b><br><a href="https://wa.me/57'+c.tecnicoWa+'" target="_blank" class="wa-link">💬 WhatsApp</a></div></div>';
   } else if(c.estado==='verde'){
-    newP.className='piloto verde';
+    document.getElementById('sem-verde').style.display='block';
     et.textContent='Servicio completado ✓';
     ed.textContent='¡Gracias!';
     if(semaforoInterval)clearInterval(semaforoInterval);
   }
-  oldP.parentNode.replaceChild(newP,oldP);
 }
 
 function startPolling(code){
@@ -541,7 +544,9 @@ function loadAdminCases(){
       else act='<span class="badge verificado">✓ '+(x.calificacion>0?x.calificacion+'★':'Pendiente')+'</span>';
       var gpsLink='';
       if(x.ubicacionLink)gpsLink='<div class="sub"><a href="'+x.ubicacionLink+'" target="_blank" style="color:#2E6FE0;font-weight:700;font-size:11px;text-decoration:none">🗺️ Ver ubicación en Waze</a></div>';
-      h+='<div class="case-row" style="border-left:4px solid '+col+'"><div class="case-info"><div style="width:12px;height:12px;border-radius:50%;background:'+col+';flex-shrink:0"></div><div><b>'+x.codigo+'</b> — '+x.categoria+'<div class="sub">'+x.dano+'</div><div class="sub">📍 '+x.direccion+' · 👤 '+x.cliente+'</div>'+gpsLink+(x.tecnico?'<div class="sub" style="color:var(--teal)">Técnico: '+x.tecnico+'</div>':'')+'</div></div>'+act+'</div>';
+      var fechaTxt='';
+      if(x.fecha){var d=new Date(x.fecha);fechaTxt=d.toLocaleDateString('es-CO')+' '+d.toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'});}
+      h+='<div class="case-row" style="border-left:4px solid '+col+'"><div class="case-info"><div style="width:12px;height:12px;border-radius:50%;background:'+col+';flex-shrink:0"></div><div><b>'+x.codigo+'</b> — '+x.categoria+'<div class="sub">'+x.dano+'</div><div class="sub">📍 '+x.direccion+' · 👤 '+x.cliente+'</div><div class="sub">🕐 '+fechaTxt+'</div>'+gpsLink+(x.tecnico?'<div class="sub" style="color:var(--teal)">Técnico: '+x.tecnico+'</div>':'')+'</div></div>'+act+'</div>';
     }
     c.innerHTML=h||'<p>No hay casos.</p>';
   }).catch(function(err){c.innerHTML='<p style="color:red">Error: '+err.message+'</p>';});
@@ -580,7 +585,9 @@ function consultarCaso(){
   document.getElementById('cliente-consultar').style.display='none';
   document.getElementById('cliente-estado').style.display='block';
   document.getElementById('caso-code-display').textContent=code;
-  document.getElementById('piloto').className='piloto roja';
+  document.getElementById('sem-rojo').style.display='block';
+  document.getElementById('sem-amarillo').style.display='none';
+  document.getElementById('sem-verde').style.display='none';
   document.getElementById('estado-txt').textContent='Consultando...';
   document.getElementById('estado-detalle').textContent='Buscando caso '+code+'...';
   currentCaseCode=code;
