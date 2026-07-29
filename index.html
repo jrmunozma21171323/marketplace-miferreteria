@@ -200,8 +200,6 @@ tr:last-child td{border-bottom:none;}
   .tagline-text{font-size:16px;}
 }
 </style>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 </head>
 <body>
 <div class="wrap">
@@ -432,67 +430,81 @@ function submitCase(){
   if(!contacto){alert('Escribe tu nombre y WhatsApp');return;}
   var code='JAM-'+Math.floor(1000+Math.random()*9000);
 
-  // 1) Mostrar semáforo INMEDIATAMENTE
   document.getElementById('cliente-form').style.display='none';
   document.getElementById('cliente-estado').style.display='block';
   document.getElementById('caso-code-display').textContent=code;
   document.getElementById('cat-elegida').textContent=categoria;
   document.getElementById('piloto').className='piloto roja';
   document.getElementById('estado-txt').textContent='Buscando técnico...';
-  document.getElementById('estado-detalle').textContent='Caso '+code+' publicado para '+categoria+'.';
+  document.getElementById('estado-detalle').textContent='Guardando caso...';
   currentCaseCode=code;
-
-  // 2) Guardar en Firebase
-  var caso={codigo:code,categoria:categoria,dano:damage,direccion:address||'No especificada',cliente:contacto,estado:'rojo',fecha:new Date().toISOString(),tecnico:'',tecnicoWa:'',calificacion:0};
   localStorage.setItem('mf_last_case',code);
-  db.ref('casos/'+code).set(caso).then(function(){
+
+  var caso={codigo:code,categoria:categoria,dano:damage,direccion:address||'No especificada',cliente:contacto,estado:'rojo',fecha:new Date().toISOString(),tecnico:'',tecnicoWa:'',calificacion:0};
+
+  fetch(FBURL+'/casos/'+code+'.json',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(caso)})
+  .then(function(r){return r.json()})
+  .then(function(){
     document.getElementById('estado-detalle').textContent='✅ Caso '+code+' guardado. Publicado para '+categoria+'.';
-  }).catch(function(err){
-    document.getElementById('estado-detalle').textContent='⚠️ Error guardando: '+err.message;
+    startPolling(code);
+  })
+  .catch(function(err){
+    document.getElementById('estado-detalle').textContent='⚠️ Error: '+err.message;
   });
 
-  // 3) Escuchar cambios en tiempo real
-  db.ref('casos/'+code).on('value',function(snap){
-    var c=snap.val();if(!c)return;
-    var p=document.getElementById('piloto');
-    var et=document.getElementById('estado-txt');
-    var ed=document.getElementById('estado-detalle');
-    var rb=document.getElementById('reveal-box');
-    rb.innerHTML='';
-    if(c.estado==='rojo'){p.className='piloto roja';et.textContent='Buscando técnico...';ed.textContent='Caso '+code+' publicado para '+c.categoria+'.';}
-    else if(c.estado==='amarillo'){p.className='piloto amarilla';et.textContent='¡Un técnico tomó tu caso!';ed.textContent=(c.tecnico||'Técnico')+' va a atenderte.';if(c.tecnicoWa)rb.innerHTML='<div class="tech-reveal"><div class="ph"></div><div><b>'+c.tecnico+'</b><br><a href="https://wa.me/57'+c.tecnicoWa+'" target="_blank" class="wa-link">💬 WhatsApp</a></div></div>';}
-    else if(c.estado==='verde'){p.className='piloto verde';et.textContent='Servicio completado ✓';ed.textContent='¡Gracias!';}
-  });
-
-  // 4) Abrir WhatsApp al final
   var waMsg=encodeURIComponent('🔧 NUEVA SOLICITUD\n🔖 '+code+'\n📋 '+categoria+'\n🔍 '+damage+'\n📍 '+(address||'N/A')+'\n👤 '+contacto);
   window.open('https://wa.me/573244779393?text='+waMsg,'_blank');
 }
 
+function startPolling(code){
+  if(semaforoInterval) clearInterval(semaforoInterval);
+  semaforoInterval=setInterval(function(){
+    fetch(FBURL+'/casos/'+code+'.json').then(function(r){return r.json()}).then(function(c){
+      if(!c) return;
+      var p=document.getElementById('piloto');
+      var et=document.getElementById('estado-txt');
+      var ed=document.getElementById('estado-detalle');
+      var rb=document.getElementById('reveal-box');
+      rb.innerHTML='';
+      if(c.estado==='rojo'){p.className='piloto roja';et.textContent='Buscando técnico...';ed.textContent='Caso '+code+' publicado para '+c.categoria+'.';}
+      else if(c.estado==='amarillo'){p.className='piloto amarilla';et.textContent='¡Un técnico tomó tu caso!';ed.textContent=(c.tecnico||'Técnico')+' va a atenderte.';if(c.tecnicoWa)rb.innerHTML='<div class="tech-reveal"><div class="ph"></div><div><b>'+c.tecnico+'</b><br><a href="https://wa.me/57'+c.tecnicoWa+'" target="_blank" class="wa-link">💬 WhatsApp</a></div></div>';}
+      else if(c.estado==='verde'){p.className='piloto verde';et.textContent='Servicio completado ✓';ed.textContent='¡Gracias!';clearInterval(semaforoInterval);}
+    });
+  },5000);
+}
+
 function loadAdminCases(){
   var c=document.getElementById('admin-cases');if(!c)return;
-  c.innerHTML='<p style="color:var(--steel)">Cargando desde Firebase...</p>';
-  db.ref('casos').orderByChild('fecha').once('value').then(snap=>{
-    var arr=[];snap.forEach(ch=>{arr.push(ch.val())});arr.reverse();
-    if(!arr.length){c.innerHTML='<p style="color:var(--steel)">No hay casos.</p>';return;}
-    var h='';arr.forEach(x=>{
-      var col=x.estado==='rojo'?'var(--roja)':x.estado==='amarillo'?'var(--amarilla)':'var(--verde)';
+  c.innerHTML='<p style="color:var(--steel)">Cargando...</p>';
+  fetch(FBURL+'/casos.json').then(function(r){return r.json()}).then(function(data){
+    if(!data){c.innerHTML='<p style="color:var(--steel)">No hay casos.</p>';return;}
+    var arr=[];for(var k in data){if(data.hasOwnProperty(k))arr.push(data[k]);}
+    arr.sort(function(a,b){return b.fecha>a.fecha?1:-1;});
+    var h='';
+    for(var i=0;i<arr.length;i++){
+      var x=arr[i];
+      var col=x.estado==='rojo'?'#C43D2E':x.estado==='amarillo'?'#F2B705':'#3C8F5C';
       var act='';
-      if(x.estado==='rojo')act=`<button class="btn btn-primary" onclick="asignarTec('${x.codigo}')">Asignar técnico</button>`;
-      else if(x.estado==='amarillo')act=`<button class="btn btn-primary" onclick="completarCaso('${x.codigo}')">Completado</button>`;
+      if(x.estado==='rojo')act='<button class="btn btn-primary" onclick="asignarTec(''+x.codigo+'')">Asignar técnico</button>';
+      else if(x.estado==='amarillo')act='<button class="btn btn-primary" onclick="completarCaso(''+x.codigo+'')">Completado</button>';
       else act='<span class="badge verificado">✓ '+(x.calificacion>0?x.calificacion+'★':'Pendiente')+'</span>';
-      h+=`<div class="case-row" style="border-left:4px solid ${col}"><div class="case-info"><div style="width:12px;height:12px;border-radius:50%;background:${col};flex-shrink:0"></div><div><b>${x.codigo}</b> — ${x.categoria}<div class="sub">${x.dano}</div><div class="sub">📍 ${x.direccion} · 👤 ${x.cliente}</div>${x.tecnico?'<div class="sub" style="color:var(--teal)">Técnico: '+x.tecnico+'</div>':''}</div></div>${act}</div>`;
-    });c.innerHTML=h||'<p>No hay casos.</p>';
-  }).catch(function(err){c.innerHTML='<p style="color:var(--rust)">Error Firebase: '+err.message+'</p>';});
+      h+='<div class="case-row" style="border-left:4px solid '+col+'"><div class="case-info"><div style="width:12px;height:12px;border-radius:50%;background:'+col+';flex-shrink:0"></div><div><b>'+x.codigo+'</b> — '+x.categoria+'<div class="sub">'+x.dano+'</div><div class="sub">📍 '+x.direccion+' · 👤 '+x.cliente+'</div>'+(x.tecnico?'<div class="sub" style="color:var(--teal)">Técnico: '+x.tecnico+'</div>':'')+'</div></div>'+act+'</div>';
+    }
+    c.innerHTML=h||'<p>No hay casos.</p>';
+  }).catch(function(err){c.innerHTML='<p style="color:red">Error: '+err.message+'</p>';});
 }
 function asignarTec(code){
   var n=prompt('Nombre del técnico:');if(!n)return;
   var w=prompt('WhatsApp del técnico (ej: 3001234567):');if(!w)return;
-  db.ref('casos/'+code).update({estado:'amarillo',tecnico:n,tecnicoWa:w}).then(()=>{alert('✅ '+code+' asignado a '+n);loadAdminCases();});
+  fetch(FBURL+'/casos/'+code+'.json',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({estado:'amarillo',tecnico:n,tecnicoWa:w})})
+  .then(function(){alert('✅ '+code+' asignado a '+n);loadAdminCases();})
+  .catch(function(err){alert('Error: '+err.message);});
 }
 function completarCaso(code){
   if(!confirm('¿Completado?'))return;
-  db.ref('casos/'+code).update({estado:'verde'}).then(()=>{alert('✅ '+code+' completado');loadAdminCases();});
+  fetch(FBURL+'/casos/'+code+'.json',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({estado:'verde'})})
+  .then(function(){alert('✅ '+code+' completado');loadAdminCases();})
+  .catch(function(err){alert('Error: '+err.message);});
 }
 
 function resetCliente(){
