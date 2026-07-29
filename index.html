@@ -543,7 +543,7 @@ function loadAdminCases(){
       var act='';
       if(x.estado==='rojo')act='<button class="btn btn-primary" onclick="asignarTec(\x27'+x.codigo+'\x27)">Asignar técnico</button>';
       else if(x.estado==='amarillo')act='<button class="btn btn-primary" onclick="completarCaso(\x27'+x.codigo+'\x27)">Completado</button>';
-      else act='<span class="badge verificado">✓ '+(x.calificacion>0?x.calificacion+'★':'Pendiente')+'</span>';
+      else act='<span class="badge verificado">✓ Cerrado</span>';
       var gpsLink='';
       if(x.ubicacionLink)gpsLink='<div class="sub"><a href="'+x.ubicacionLink+'" target="_blank" style="color:#2E6FE0;font-weight:700;font-size:11px;text-decoration:none">🗺️ Ver ubicación en Waze</a></div>';
       var fechaTxt='';
