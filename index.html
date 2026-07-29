@@ -298,8 +298,9 @@ tr:last-child td{border-bottom:none;}
           <div class="photo-drop" id="photo-drop" onclick="document.getElementById('photo-input').click()"><div class="pin"></div><span class="hint">📌 <b>Toca para agregar una foto</b></span></div>
           <input type="file" id="photo-input" accept="image/*" style="display:none;" onchange="previewPhoto(event)">
         </div>
-        <div class="form-row"><label>Dirección exacta o punto de referencia</label><input type="text" id="address-input" placeholder="Ej: Calle 10 #5-23, cerca al parque"></div>
-        <div class="form-row"><label>Nombre y WhatsApp</label><input type="text" id="contact-input" placeholder="Nombre — número de WhatsApp"></div>
+        <div class="form-row"><label>Dirección o punto de referencia</label><input type="text" id="address-input" placeholder="Ej: Calle 10 #5-23, apto 302"><div style="margin-top:6px"><button type="button" class="btn btn-ghost" onclick="capturarUbicacion()" id="btn-gps" style="font-size:11px;padding:8px 12px">📍 Usar mi ubicación actual</button><span id="gps-status" style="font-size:11px;color:var(--teal);margin-left:8px"></span></div><input type="hidden" id="gps-lat"><input type="hidden" id="gps-lng"></div>
+        <div class="form-row"><label>Tu nombre</label><input type="text" id="nombre-input" placeholder="Ej: Juan Pérez"></div>
+        <div class="form-row"><label>Tu número de celular</label><input type="tel" id="celular-input" placeholder="Ej: 3162100289" maxlength="10" oninput="this.value=this.value.replace(/[^0-9]/g,'')"><span id="celular-error" style="color:var(--rust);font-size:11px;display:none">El celular debe tener 10 dígitos y empezar con 3</span></div>
         <button class="btn btn-primary btn-block" onclick="submitCase()">Buscar técnico</button>
       </div>
     </div>
@@ -442,8 +443,23 @@ function submitCase(){
   var categoria = selectedCat ? selectedCat.name : 'No especificada';
   var damage = chosen.length ? chosen.join(', ') : categoria;
   var address = document.getElementById('address-input').value.trim();
-  var contacto = document.getElementById('contact-input').value.trim();
-  if(!contacto){alert('Escribe tu nombre y WhatsApp');return;}
+  var nombre = document.getElementById('nombre-input').value.trim();
+  var celular = document.getElementById('celular-input').value.trim();
+  var gpsLat = document.getElementById('gps-lat').value;
+  var gpsLng = document.getElementById('gps-lng').value;
+
+  if(!nombre){alert('Escribe tu nombre');return;}
+  if(!validarCelular(celular)){
+    document.getElementById('celular-error').style.display='block';
+    document.getElementById('celular-input').focus();
+    return;
+  }
+  document.getElementById('celular-error').style.display='none';
+  var contacto = nombre + ' — ' + celular;
+  var ubicacionLink = '';
+  if(gpsLat && gpsLng){
+    ubicacionLink = 'https://waze.com/ul?ll='+gpsLat+','+gpsLng+'&navigate=yes';
+  }
   var code='JAM-'+Math.floor(1000+Math.random()*9000);
 
   document.getElementById('cliente-form').style.display='none';
@@ -456,7 +472,7 @@ function submitCase(){
   currentCaseCode=code;
   localStorage.setItem('mf_last_case',code);
 
-  var caso={codigo:code,categoria:categoria,dano:damage,direccion:address||'No especificada',cliente:contacto,estado:'rojo',fecha:new Date().toISOString(),tecnico:'',tecnicoWa:'',calificacion:0};
+  var caso={codigo:code,categoria:categoria,dano:damage,direccion:address||'No especificada',cliente:contacto,celular:celular,estado:'rojo',fecha:new Date().toISOString(),tecnico:'',tecnicoWa:'',calificacion:0,gpsLat:gpsLat,gpsLng:gpsLng,ubicacionLink:ubicacionLink};
 
   fetch(FBURL+'/casos/'+code+'.json',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(caso)})
   .then(function(r){return r.json()})
@@ -468,8 +484,8 @@ function submitCase(){
     document.getElementById('estado-detalle').textContent='⚠️ Error: '+err.message;
   });
 
-  var waMsg=encodeURIComponent('🔧 NUEVA SOLICITUD\n🔖 '+code+'\n📋 '+categoria+'\n🔍 '+damage+'\n📍 '+(address||'N/A')+'\n👤 '+contacto);
-  window.open('https://wa.me/573244779393?text='+waMsg,'_blank');
+  var waMsg='🔧 NUEVA SOLICITUD\n🔖 '+code+'\n📋 '+categoria+'\n🔍 '+damage+'\n📍 '+(address||'N/A')+(ubicacionLink?'\n🗺️ Ubicación: '+ubicacionLink:'')+'\n👤 '+nombre+'\n📱 '+celular;
+  window.open('https://wa.me/573244779393?text='+encodeURIComponent(waMsg),'_blank');
 }
 
 function actualizarSemaforo(c,code){
@@ -523,7 +539,9 @@ function loadAdminCases(){
       if(x.estado==='rojo')act='<button class="btn btn-primary" onclick="asignarTec(\x27'+x.codigo+'\x27)">Asignar técnico</button>';
       else if(x.estado==='amarillo')act='<button class="btn btn-primary" onclick="completarCaso(\x27'+x.codigo+'\x27)">Completado</button>';
       else act='<span class="badge verificado">✓ '+(x.calificacion>0?x.calificacion+'★':'Pendiente')+'</span>';
-      h+='<div class="case-row" style="border-left:4px solid '+col+'"><div class="case-info"><div style="width:12px;height:12px;border-radius:50%;background:'+col+';flex-shrink:0"></div><div><b>'+x.codigo+'</b> — '+x.categoria+'<div class="sub">'+x.dano+'</div><div class="sub">📍 '+x.direccion+' · 👤 '+x.cliente+'</div>'+(x.tecnico?'<div class="sub" style="color:var(--teal)">Técnico: '+x.tecnico+'</div>':'')+'</div></div>'+act+'</div>';
+      var gpsLink='';
+      if(x.ubicacionLink)gpsLink='<div class="sub"><a href="'+x.ubicacionLink+'" target="_blank" style="color:#2E6FE0;font-weight:700;font-size:11px;text-decoration:none">🗺️ Ver ubicación en Waze</a></div>';
+      h+='<div class="case-row" style="border-left:4px solid '+col+'"><div class="case-info"><div style="width:12px;height:12px;border-radius:50%;background:'+col+';flex-shrink:0"></div><div><b>'+x.codigo+'</b> — '+x.categoria+'<div class="sub">'+x.dano+'</div><div class="sub">📍 '+x.direccion+' · 👤 '+x.cliente+'</div>'+gpsLink+(x.tecnico?'<div class="sub" style="color:var(--teal)">Técnico: '+x.tecnico+'</div>':'')+'</div></div>'+act+'</div>';
     }
     c.innerHTML=h||'<p>No hay casos.</p>';
   }).catch(function(err){c.innerHTML='<p style="color:red">Error: '+err.message+'</p>';});
@@ -597,6 +615,35 @@ function checkLastCase(){
   }).catch(function(){});
 }
 
+function validarCelular(num){
+  if(!num||num.length!==10)return false;
+  if(num.charAt(0)!=='3')return false;
+  return true;
+}
+
+function capturarUbicacion(){
+  var btn=document.getElementById('btn-gps');
+  var status=document.getElementById('gps-status');
+  if(!navigator.geolocation){status.textContent='Tu navegador no soporta GPS';return;}
+  btn.disabled=true;
+  status.textContent='Obteniendo ubicación...';
+  navigator.geolocation.getCurrentPosition(
+    function(pos){
+      document.getElementById('gps-lat').value=pos.coords.latitude;
+      document.getElementById('gps-lng').value=pos.coords.longitude;
+      status.textContent='✅ Ubicación capturada';
+      status.style.color='var(--teal)';
+      btn.textContent='📍 Ubicación capturada ✓';
+    },
+    function(err){
+      status.textContent='No se pudo obtener ubicación. Escribe la dirección manualmente.';
+      status.style.color='var(--rust)';
+      btn.disabled=false;
+    },
+    {enableHighAccuracy:true,timeout:15000}
+  );
+}
+
 function resetCliente(){
   document.getElementById('cliente-form').style.display='block';
   document.getElementById('cliente-estado').style.display='none';
@@ -606,7 +653,14 @@ function resetCliente(){
   document.getElementById('cliente-detalle').style.display='none';
   document.getElementById('damage-chips').innerHTML='';
   document.getElementById('address-input').value='';
-  document.getElementById('contact-input').value='';
+  document.getElementById('nombre-input').value='';
+  document.getElementById('celular-input').value='';
+  document.getElementById('gps-lat').value='';
+  document.getElementById('gps-lng').value='';
+  document.getElementById('gps-status').textContent='';
+  document.getElementById('btn-gps').textContent='📍 Usar mi ubicación actual';
+  document.getElementById('btn-gps').disabled=false;
+  document.getElementById('celular-error').style.display='none';
   document.getElementById('photo-drop').innerHTML = `<div class="pin"></div><span class="hint">📌 <b>Toca para agregar una foto</b></span>`;
   uploadedPhoto = null;
 }
