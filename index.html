@@ -479,16 +479,19 @@ function actualizarSemaforo(c,code){
   var rb=document.getElementById('reveal-box');
   rb.innerHTML='';
   if(c.estado==='rojo'){
-    p.className='piloto roja';p.style.background='#C43D2E';
+    p.setAttribute('class','piloto roja');
+    p.setAttribute('style','background:#C43D2E !important');
     et.textContent='Buscando técnico...';
     ed.textContent='Caso '+code+' publicado para '+c.categoria+'.';
   } else if(c.estado==='amarillo'){
-    p.className='piloto amarilla';p.style.background='#F2B705';
+    p.setAttribute('class','piloto amarilla');
+    p.setAttribute('style','background:#F2B705 !important');
     et.textContent='¡Un técnico tomó tu caso!';
     ed.textContent=(c.tecnico||'Técnico')+' va a atenderte.';
     if(c.tecnicoWa)rb.innerHTML='<div class="tech-reveal"><div class="ph"></div><div><b>'+c.tecnico+'</b><br><a href="https://wa.me/57'+c.tecnicoWa+'" target="_blank" class="wa-link">💬 WhatsApp</a></div></div>';
   } else if(c.estado==='verde'){
-    p.className='piloto verde';p.style.background='#3C8F5C';
+    p.setAttribute('class','piloto verde');
+    p.setAttribute('style','background:#3C8F5C !important');
     et.textContent='Servicio completado ✓';
     ed.textContent='¡Gracias!';
     if(semaforoInterval)clearInterval(semaforoInterval);
