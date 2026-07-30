@@ -322,6 +322,10 @@ tr:last-child td{border-bottom:none;}
       </div>
       <div class="card" style="margin-top:14px">
         <div id="reveal-box"></div>
+        <div id="btn-cerrar-caso" style="display:none;text-align:center;margin-top:14px;padding-top:14px;border-top:1.5px dashed var(--steel)">
+          <button class="btn btn-primary" onclick="cerrarCasoCliente()" style="background:#3C8F5C;color:#fff;padding:14px 24px;font-size:14px;width:100%">✅ El trabajo ya fue completado</button>
+          <p style="font-size:10px;color:var(--steel);margin:6px 0 0">Toca cuando el técnico haya terminado el trabajo</p>
+        </div>
         <div style="margin-top:14px;text-align:center"><button class="btn btn-ghost" onclick="resetCliente()">← Nueva solicitud</button></div>
       </div>
     </div>
@@ -507,16 +511,18 @@ function actualizarSemaforo(c,code){
     document.getElementById('sem-rojo').style.display='block';
     et.textContent='Buscando técnico...';
     ed.textContent='Caso '+code+' publicado para '+c.categoria+'.';
+    document.getElementById('btn-cerrar-caso').style.display='none';
   } else if(c.estado==='amarillo'){
     document.getElementById('sem-amarillo').style.display='block';
     et.textContent='¡Un técnico tomó tu caso!';
     ed.textContent=(c.tecnico||'Técnico')+' va a atenderte.';
     if(c.tecnicoWa){var msjTec=encodeURIComponent('Hola! Soy cliente de Mi Ferretería, caso '+code+'. Por favor comunícate conmigo para coordinar. Gracias!');rb.innerHTML='<div class="tech-reveal"><div class="ph"></div><div><b>'+c.tecnico+'</b><br><a href="https://wa.me/57'+c.tecnicoWa+'?text='+msjTec+'" target="_blank" class="wa-link">💬 Chatear con '+c.tecnico+'</a></div></div>';}
-    rb.innerHTML+='<div style="text-align:center;margin-top:14px"><button class="btn btn-primary" onclick="cerrarCasoCliente()" style="background:#3C8F5C;color:#fff;padding:14px 24px;font-size:14px">✅ El trabajo ya fue completado</button><p style="font-size:10px;color:var(--steel);margin:6px 0 0">Toca cuando el técnico haya terminado</p></div>';
+    document.getElementById('btn-cerrar-caso').style.display='block';
   } else if(c.estado==='verde'){
     document.getElementById('sem-verde').style.display='block';
     et.textContent='Servicio completado ✓';
-    ed.textContent='¡Gracias!';
+    ed.textContent='¡Gracias por usar Mi Ferretería!';
+    document.getElementById('btn-cerrar-caso').style.display='none';
     if(semaforoInterval)clearInterval(semaforoInterval);
   }
 }
