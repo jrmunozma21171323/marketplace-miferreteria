@@ -653,6 +653,7 @@ function cerrarCasoCliente(){
     document.getElementById('estado-txt').textContent='Servicio completado ✓';
     document.getElementById('estado-detalle').textContent='¡Gracias por usar Mi Ferretería!';
     document.getElementById('reveal-box').innerHTML='';
+    document.getElementById('btn-cerrar-caso').style.display='none';
     if(semaforoInterval)clearInterval(semaforoInterval);
   });
 }
