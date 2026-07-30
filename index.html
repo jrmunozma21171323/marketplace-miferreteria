@@ -345,12 +345,14 @@ tr:last-child td{border-bottom:none;}
 
   <!-- ========== NEGOCIO ========== -->
   <div id="view-negocio" class="view">
-    <div class="stat-row">
-      <div class="stat"><div class="num">18</div><div class="lbl">Casos activos</div></div>
-      <div class="stat"><div class="num">9</div><div class="lbl">Técnicos activos</div></div>
-      <div class="stat"><div class="num">$310.000</div><div class="lbl">Créditos vendidos</div></div>
+    <div id="admin-stats"></div>
+    <h2 class="section-title">Gestión de casos</h2>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
+      <button class="btn btn-primary" onclick="filtrarCasos('todos')" id="fil-todos" style="font-size:11px;padding:8px 14px">Todos</button>
+      <button class="btn btn-ghost" onclick="filtrarCasos('rojo')" id="fil-rojo" style="font-size:11px;padding:8px 14px">🔴 Sin asignar</button>
+      <button class="btn btn-ghost" onclick="filtrarCasos('amarillo')" id="fil-amarillo" style="font-size:11px;padding:8px 14px">🟡 En atención</button>
+      <button class="btn btn-ghost" onclick="filtrarCasos('verde')" id="fil-verde" style="font-size:11px;padding:8px 14px">🟢 Cerrados</button>
     </div>
-    <h2 class="section-title">Todos los casos (en tiempo real)</h2>
     <div id="admin-cases"><p style="color:var(--steel);font-size:12px">Toca "Negocio" para cargar.</p></div>
   </div>
 
@@ -528,48 +530,53 @@ function startPolling(code){
   },5000);
 }
 
+var filtroActual='todos';
+function filtrarCasos(f){filtroActual=f;loadAdminCases();}
+
 function loadAdminCases(){
   var c=document.getElementById('admin-cases');if(!c)return;
   c.innerHTML='<p style="color:var(--steel)">Cargando...</p>';
+  var ids=['todos','rojo','amarillo','verde'];
+  for(var b=0;b<ids.length;b++){var btn=document.getElementById('fil-'+ids[b]);if(btn)btn.className=ids[b]===filtroActual?'btn btn-primary':'btn btn-ghost';}
   fetch(FBURL+'/casos.json').then(function(r){return r.json()}).then(function(data){
-    if(!data){c.innerHTML='<p style="color:var(--steel)">No hay casos.</p>';return;}
+    if(!data){c.innerHTML='<p style="color:var(--steel)">No hay casos.</p>';document.getElementById('admin-stats').innerHTML='';return;}
     var arr=[];for(var k in data){if(data.hasOwnProperty(k))arr.push(data[k]);}
     arr.sort(function(a,b){return b.fecha>a.fecha?1:-1;});
-    var hActivos='';
-    var hCerrados='';
+    var sR=0,sA=0,sV=0,h='';
     for(var i=0;i<arr.length;i++){
       var x=arr[i];
+      if(x.estado==='rojo')sR++;else if(x.estado==='amarillo')sA++;else sV++;
+      if(filtroActual!=='todos'&&x.estado!==filtroActual)continue;
       var col=x.estado==='rojo'?'#C43D2E':x.estado==='amarillo'?'#F2B705':'#3C8F5C';
       var act='';
       if(x.estado==='rojo')act='<button class="btn btn-primary" onclick="asignarTec(\x27'+x.codigo+'\x27)">Asignar técnico</button>';
       else if(x.estado==='amarillo')act='<button class="btn btn-primary" onclick="completarCaso(\x27'+x.codigo+'\x27)">Completado</button>';
-      else act='<span class="badge verificado">✓ Cerrado</span>';
-      var gpsLink='';
-      if(x.ubicacionLink)gpsLink='<div class="sub"><a href="'+x.ubicacionLink+'" target="_blank" style="color:#2E6FE0;font-weight:700;font-size:11px;text-decoration:none">🗺️ Ver ubicación en Waze</a></div>';
+      else act='<span class="badge verificado">\u2713 Cerrado</span>';
       var fechaTxt='';
       if(x.fecha){var d=new Date(x.fecha);fechaTxt=d.toLocaleDateString('es-CO')+' '+d.toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'});}
-      var row='<div class="case-row" style="border-left:4px solid '+col+'"><div class="case-info"><div style="width:12px;height:12px;border-radius:50%;background:'+col+';flex-shrink:0"></div><div><b>'+x.codigo+'</b> — '+x.categoria+'<div class="sub">'+x.dano+'</div><div class="sub">📍 '+x.direccion+' · 👤 '+x.cliente+'</div><div class="sub">🕐 '+fechaTxt+'</div>'+gpsLink+(x.tecnico?'<div class="sub" style="color:var(--teal)">Técnico: '+x.tecnico+'</div>':'')+'</div></div>'+act+'</div>';
-      if(x.estado==='verde')hCerrados+=row;
-      else hActivos+=row;
+      var gpsLink='';
+      if(x.ubicacionLink)gpsLink='<div class="sub"><a href="'+x.ubicacionLink+'" target="_blank" style="color:#2E6FE0;font-weight:700;font-size:11px;text-decoration:none">\ud83d\uddfa\ufe0f Ver ubicación en Waze</a></div>';
+      h+='<div class="case-row" style="border-left:4px solid '+col+'"><div class="case-info"><div style="width:12px;height:12px;border-radius:50%;background:'+col+';flex-shrink:0"></div><div><b>'+x.codigo+'</b> — '+x.categoria+'<div class="sub">'+x.dano+'</div><div class="sub">\ud83d\udccd '+x.direccion+' · \ud83d\udc64 '+x.cliente+'</div><div class="sub">\ud83d\udd50 '+fechaTxt+'</div>'+gpsLink+(x.tecnico?'<div class="sub" style="color:var(--teal)">Técnico: '+x.tecnico+'</div>':'')+'</div></div>'+act+'</div>';
     }
-    var resultado='';
-    if(hActivos)resultado+=hActivos;
-    else resultado+='<p style="color:var(--steel);font-size:12px">No hay casos activos.</p>';
-    if(hCerrados)resultado+='<h2 class="section-title" style="margin-top:20px;color:var(--steel)">Casos cerrados</h2>'+hCerrados;
-    c.innerHTML=resultado;
+    document.getElementById('admin-stats').innerHTML='<div class="stat-row"><div class="stat"><div class="num" style="color:#C43D2E">'+sR+'</div><div class="lbl">\ud83d\udd34 Sin asignar</div></div><div class="stat"><div class="num" style="color:#F2B705">'+sA+'</div><div class="lbl">\ud83d\udfe1 En atención</div></div><div class="stat"><div class="num" style="color:#3C8F5C">'+sV+'</div><div class="lbl">\ud83d\udfe2 Cerrados</div></div></div>';
+    c.innerHTML=h||'<p style="color:var(--steel)">No hay casos con este filtro.</p>';
   }).catch(function(err){c.innerHTML='<p style="color:red">Error: '+err.message+'</p>';});
 }
 function asignarTec(code){
   var n=prompt('Nombre del técnico:');if(!n)return;
-  var w=prompt('WhatsApp del técnico (ej: 3001234567):');if(!w)return;
-  fetch(FBURL+'/casos/'+code+'.json',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({estado:'amarillo',tecnico:n,tecnicoWa:w})})
-  .then(function(){alert('✅ '+code+' asignado a '+n);loadAdminCases();})
-  .catch(function(err){alert('Error: '+err.message);});
+  var w=prompt('WhatsApp del técnico (solo números, ej: 3001234567):');if(!w)return;
+  fetch(FBURL+'/casos/'+code+'.json').then(function(r){return r.json()}).then(function(caso){
+    return fetch(FBURL+'/casos/'+code+'.json',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({estado:'amarillo',tecnico:n,tecnicoWa:w})}).then(function(){
+      var msjTec='CASO ASIGNADO - Mi Ferretería\nCaso: '+code+'\n'+caso.categoria+'\n'+caso.dano+'\nDirección: '+caso.direccion+'\nCliente: '+caso.cliente+(caso.ubicacionLink?'\nUbicación: '+caso.ubicacionLink:'')+'\nContacta al cliente para coordinar.';
+      window.open('https://wa.me/57'+w+'?text='+encodeURIComponent(msjTec),'_blank');
+      loadAdminCases();
+    });
+  }).catch(function(err){alert('Error: '+err.message);});
 }
 function completarCaso(code){
-  if(!confirm('¿Completado?'))return;
+  if(!confirm('¿Confirmas que el servicio fue completado?'))return;
   fetch(FBURL+'/casos/'+code+'.json',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({estado:'verde'})})
-  .then(function(){alert('✅ '+code+' completado');loadAdminCases();})
+  .then(function(){alert('\u2705 '+code+' completado');loadAdminCases();})
   .catch(function(err){alert('Error: '+err.message);});
 }
 
