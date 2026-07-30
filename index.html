@@ -511,7 +511,8 @@ function actualizarSemaforo(c,code){
     document.getElementById('sem-amarillo').style.display='block';
     et.textContent='¡Un técnico tomó tu caso!';
     ed.textContent=(c.tecnico||'Técnico')+' va a atenderte.';
-    if(c.tecnicoWa)rb.innerHTML='<div class="tech-reveal"><div class="ph"></div><div><b>'+c.tecnico+'</b><br><a href="https://wa.me/57'+c.tecnicoWa+'" target="_blank" class="wa-link">💬 WhatsApp</a></div></div>';
+    if(c.tecnicoWa){var msjTec=encodeURIComponent('Hola! Soy cliente de Mi Ferretería, caso '+code+'. Por favor comunícate conmigo para coordinar. Gracias!');rb.innerHTML='<div class="tech-reveal"><div class="ph"></div><div><b>'+c.tecnico+'</b><br><a href="https://wa.me/57'+c.tecnicoWa+'?text='+msjTec+'" target="_blank" class="wa-link">💬 Chatear con '+c.tecnico+'</a></div></div>';}
+    rb.innerHTML+='<div style="text-align:center;margin-top:14px"><button class="btn btn-primary" onclick="cerrarCasoCliente()" style="background:#3C8F5C;color:#fff;padding:14px 24px;font-size:14px">✅ El trabajo ya fue completado</button><p style="font-size:10px;color:var(--steel);margin:6px 0 0">Toca cuando el técnico haya terminado</p></div>';
   } else if(c.estado==='verde'){
     document.getElementById('sem-verde').style.display='block';
     et.textContent='Servicio completado ✓';
@@ -635,6 +636,19 @@ function checkLastCase(){
     var form=document.getElementById('cliente-form');
     form.insertBefore(banner,form.firstChild);
   }).catch(function(){});
+}
+
+function cerrarCasoCliente(){
+  if(!confirm('¿Confirmas que el técnico ya completó el trabajo?'))return;
+  fetch(FBURL+'/casos/'+currentCaseCode+'.json',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({estado:'verde'})}).then(function(){
+    document.getElementById('sem-rojo').style.display='none';
+    document.getElementById('sem-amarillo').style.display='none';
+    document.getElementById('sem-verde').style.display='block';
+    document.getElementById('estado-txt').textContent='Servicio completado ✓';
+    document.getElementById('estado-detalle').textContent='¡Gracias por usar Mi Ferretería!';
+    document.getElementById('reveal-box').innerHTML='';
+    if(semaforoInterval)clearInterval(semaforoInterval);
+  });
 }
 
 function validarCelular(num){
