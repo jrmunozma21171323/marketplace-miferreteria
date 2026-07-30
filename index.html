@@ -625,8 +625,8 @@ function checkLastCase(){
   var lastCode=localStorage.getItem('mf_last_case');
   if(!lastCode)return;
   fetch(FBURL+'/casos/'+lastCode+'.json').then(function(r){return r.json()}).then(function(caso){
-    if(!caso)return;
-    if(caso.estado==='verde'&&caso.calificacion>0)return;
+    if(!caso){localStorage.removeItem('mf_last_case');return;}
+    if(caso.estado==='verde'){localStorage.removeItem('mf_last_case');return;}
     var banner=document.createElement('div');
     banner.className='card';
     banner.style.cssText='text-align:center;margin-bottom:14px;border-color:var(--yellow)';
@@ -647,6 +647,8 @@ function checkLastCase(){
 function cerrarCasoCliente(){
   if(!confirm('¿Confirmas que el técnico ya completó el trabajo?'))return;
   fetch(FBURL+'/casos/'+currentCaseCode+'.json',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({estado:'verde'})}).then(function(){
+    localStorage.removeItem('mf_last_case');
+    if(semaforoInterval)clearInterval(semaforoInterval);
     document.getElementById('sem-rojo').style.display='none';
     document.getElementById('sem-amarillo').style.display='none';
     document.getElementById('sem-verde').style.display='block';
@@ -654,7 +656,6 @@ function cerrarCasoCliente(){
     document.getElementById('estado-detalle').textContent='¡Gracias por usar Mi Ferretería!';
     document.getElementById('reveal-box').innerHTML='';
     document.getElementById('btn-cerrar-caso').style.display='none';
-    if(semaforoInterval)clearInterval(semaforoInterval);
   });
 }
 
@@ -688,11 +689,20 @@ function capturarUbicacion(){
 }
 
 function resetCliente(){
+  localStorage.removeItem('mf_last_case');
+  if(semaforoInterval)clearInterval(semaforoInterval);
+  currentCaseCode='';
   document.getElementById('cliente-form').style.display='block';
   document.getElementById('cliente-estado').style.display='none';
   document.getElementById('cliente-consultar').style.display='none';
-  document.getElementById('piloto').className='piloto roja';
-  document.querySelectorAll('.cat-btn').forEach(b=>b.classList.remove('sel'));
+  document.getElementById('sem-rojo').style.display='block';
+  document.getElementById('sem-amarillo').style.display='none';
+  document.getElementById('sem-verde').style.display='none';
+  document.getElementById('btn-cerrar-caso').style.display='none';
+  document.getElementById('reveal-box').innerHTML='';
+  document.getElementById('estado-txt').textContent='Buscando técnico...';
+  document.getElementById('estado-detalle').textContent='';
+  document.querySelectorAll('.cat-btn').forEach(function(b){b.classList.remove('sel')});
   document.getElementById('cliente-detalle').style.display='none';
   document.getElementById('damage-chips').innerHTML='';
   document.getElementById('address-input').value='';
@@ -704,8 +714,8 @@ function resetCliente(){
   document.getElementById('btn-gps').textContent='📍 Usar mi ubicación actual';
   document.getElementById('btn-gps').disabled=false;
   document.getElementById('celular-error').style.display='none';
-  document.getElementById('photo-drop').innerHTML = `<div class="pin"></div><span class="hint">📌 <b>Toca para agregar una foto</b></span>`;
-  uploadedPhoto = null;
+  document.getElementById('photo-drop').innerHTML='<div class="pin"></div><span class="hint">📌 <b>Toca para agregar una foto</b></span>';
+  uploadedPhoto=null;
 }
 
 function openWazeStore(){ window.open('https://waze.com/ul?q=' + encodeURIComponent('Carrera 7 # 20-63, Jamundí, Valle') + '&navigate=yes', '_blank'); }
