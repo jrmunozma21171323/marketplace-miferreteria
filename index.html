@@ -660,12 +660,62 @@ function restaurarBotonMiCaso(){
   btn.setAttribute('onclick','mostrarConsulta()');
 }
 
+/* ---------- Conexion y regreso a la app (fallas 2 y 3) ---------- */
+var fallosSeguidos=0;
+
+function avisoRed(mostrar,texto){
+  var el=document.getElementById('aviso-red');
+  if(!el){
+    if(!document.body)return;
+    el=document.createElement('div');
+    el.id='aviso-red';
+    el.style.cssText='position:fixed;left:0;right:0;top:0;z-index:9998;background:var(--rust);'+
+      'color:#fff;font-family:sans-serif;font-size:13px;font-weight:600;text-align:center;'+
+      'padding:9px 12px;display:none;box-shadow:0 2px 10px rgba(0,0,0,.2)';
+    document.body.appendChild(el);
+  }
+  el.textContent=texto||'Sin conexión. Seguimos intentando...';
+  el.style.display=mostrar?'block':'none';
+}
+
+function refrescarCaso(){
+  if(!currentCaseCode){checkLastCase();return;}
+  fetch(FBURL+'/casos/'+currentCaseCode+'.json').then(function(r){return r.json()}).then(function(c){
+    fallosSeguidos=0; avisoRed(false);
+    if(c) actualizarSemaforo(c,currentCaseCode);
+  }).catch(function(){ avisoRed(true); });
+}
+
+function pausarPolling(){
+  if(semaforoInterval){clearInterval(semaforoInterval);semaforoInterval=null;}
+}
+
+// Android congela los temporizadores cuando la app se va al fondo.
+// Al volver hay que refrescar de inmediato y rearmar el reloj.
+function reanudarTodo(){
+  if(document.hidden)return;
+  refrescarCaso();
+  if(currentCaseCode)startPolling(currentCaseCode);
+}
+
+document.addEventListener('visibilitychange',function(){
+  if(document.hidden)pausarPolling(); else reanudarTodo();
+});
+window.addEventListener('pageshow',function(e){ if(e.persisted)reanudarTodo(); });
+window.addEventListener('online',function(){ avisoRed(false); reanudarTodo(); });
+window.addEventListener('offline',function(){ avisoRed(true,'Sin conexión. TODERO seguirá intentando.'); });
+
 function startPolling(code){
   if(semaforoInterval) clearInterval(semaforoInterval);
   semaforoInterval=setInterval(function(){
+    if(document.hidden) return;
     fetch(FBURL+'/casos/'+code+'.json').then(function(r){return r.json()}).then(function(c){
+      fallosSeguidos=0; avisoRed(false);
       if(!c) return;
       actualizarSemaforo(c,code);
+    }).catch(function(){
+      fallosSeguidos++;
+      if(fallosSeguidos>=2) avisoRed(true);
     });
   },5000);
 }
@@ -793,6 +843,8 @@ function cerrarCasoCliente(){
     document.getElementById('estado-detalle').textContent='¡Gracias por usar Mi Ferretería!';
     document.getElementById('reveal-box').innerHTML='';
     document.getElementById('btn-cerrar-caso').style.display='none';
+  }).catch(function(){
+    alert('No se pudo marcar el trabajo como completado. Revisa tu conexión e inténtalo otra vez.');
   });
 }
 
