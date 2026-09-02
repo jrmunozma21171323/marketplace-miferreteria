@@ -3,16 +3,22 @@
     ".read": false,
     ".write": false,
 
+    "admins": {
+      "$uid": {
+        ".read": "auth !== null && auth.uid === $uid"
+      }
+    },
+
     "casos": {
-      ".read": "auth != null",
-      ".write": "auth != null",
+      ".read": "auth !== null && root.child('admins').child(auth.uid).val() === true",
+      ".write": "auth !== null && root.child('admins').child(auth.uid).val() === true",
 
       "$codigo": {
         ".read": true,
 
         ".write": "newData.exists() && (!data.exists() || data.child('codigo').val() === newData.child('codigo').val())",
 
-        ".validate": "newData.hasChildren(['codigo', 'categoria', 'estado', 'fecha']) && (!data.exists() || auth != null || (newData.child('tecnico').val() === data.child('tecnico').val() && newData.child('tecnicoWa').val() === data.child('tecnicoWa').val() && newData.child('celular').val() === data.child('celular').val() && newData.child('fecha').val() === data.child('fecha').val()))",
+        ".validate": "newData.hasChildren(['codigo', 'categoria', 'estado', 'fecha']) && (!data.exists() || root.child('admins').child(auth.uid).val() === true || (newData.child('tecnico').val() === data.child('tecnico').val() && newData.child('tecnicoWa').val() === data.child('tecnicoWa').val() && newData.child('celular').val() === data.child('celular').val() && newData.child('fecha').val() === data.child('fecha').val()))",
 
         "codigo":    { ".validate": "newData.isString() && newData.val().length <= 20" },
         "categoria": { ".validate": "newData.isString() && newData.val().length <= 60" },
@@ -29,13 +35,37 @@
     },
 
     "fotos": {
-      ".read": "auth != null",
-      ".write": "auth != null",
+      ".read": "auth !== null && root.child('admins').child(auth.uid).val() === true",
+      ".write": "auth !== null && root.child('admins').child(auth.uid).val() === true",
 
       "$codigo": {
         ".read": true,
-        ".write": "auth != null || (!data.exists() && newData.isString() && newData.val().length <= 600000)",
+        ".write": "auth !== null && root.child('admins').child(auth.uid).val() === true || (!data.exists() && newData.isString() && newData.val().length <= 600000)",
         ".validate": "newData.isString()"
+      }
+    },
+
+    "tecnicos": {
+      ".read": "auth !== null && root.child('admins').child(auth.uid).val() === true",
+      ".write": "auth !== null && root.child('admins').child(auth.uid).val() === true",
+
+      "$uid": {
+        ".read": "auth !== null && auth.uid === $uid",
+
+        ".validate": "newData.hasChildren(['uid', 'nombre', 'celular', 'correo', 'activo'])",
+
+        "uid":      { ".validate": "newData.isString() && newData.val() === $uid" },
+        "nombre":   { ".validate": "newData.isString() && newData.val().length <= 80" },
+        "celular":  { ".validate": "newData.isString() && newData.val().length <= 20" },
+        "correo":   { ".validate": "newData.isString() && newData.val().length <= 120" },
+        "activo":   { ".validate": "newData.isBoolean()" },
+        "creditos": { ".validate": "newData.isNumber() && newData.val() >= 0" },
+
+        "oficios": {
+          "$oficio": { ".validate": "newData.isBoolean()" }
+        },
+
+        "$otro": { ".validate": true }
       }
     }
   }
