@@ -491,10 +491,55 @@ function selectCat(el, name){
 }
 
 function previewPhoto(e){
-  const file = e.target.files[0]; if(!file) return;
-  const reader = new FileReader();
-  reader.onload = ev => { uploadedPhoto = ev.target.result; document.getElementById('photo-drop').innerHTML = `<div class="pin"></div><img src="${uploadedPhoto}">`; };
+  var file = e.target.files[0]; if(!file) return;
+  var reader = new FileReader();
+  reader.onload = function(ev){
+    var img = new Image();
+    img.onload = function(){
+      // Una foto de celular pesa varios MB. Subirla tal cual por datos
+      // moviles es lentisimo y llenaria la base, asi que se reduce aqui.
+      var MAX = 900, w = img.naturalWidth, h = img.naturalHeight;
+      if (w > MAX || h > MAX) { var f = MAX / Math.max(w, h); w = Math.round(w * f); h = Math.round(h * f); }
+      var c = document.createElement('canvas'); c.width = w; c.height = h;
+      c.getContext('2d').drawImage(img, 0, 0, w, h);
+      uploadedPhoto = c.toDataURL('image/jpeg', 0.7);
+      document.getElementById('photo-drop').innerHTML = '<div class="pin"></div><img src="' + uploadedPhoto + '">';
+    };
+    img.onerror = function(){ alert('No pudimos leer esa foto. Intenta con otra.'); };
+    img.src = ev.target.result;
+  };
+  reader.onerror = function(){ alert('No pudimos leer esa foto. Intenta con otra.'); };
   reader.readAsDataURL(file);
+}
+
+function codigoAleatorio(){
+  // Seis digitos: facil de dictar y de teclear, y 900.000 combinaciones
+  // en vez de las 9.000 de antes.
+  return 'JAM-' + String(Math.floor(Math.random() * 900000) + 100000);
+}
+
+// Antes el codigo salia al azar sin comprobar nada. Como el caso se guarda
+// con PUT, un codigo repetido BORRABA el caso anterior.
+function buscarCodigoLibre(intentos, ok, falla){
+  if(intentos <= 0){ falla(new Error('sin codigo libre')); return; }
+  var code = codigoAleatorio();
+  fetch(FBURL + '/casos/' + code + '.json?shallow=true')
+    .then(function(r){ return r.json(); })
+    .then(function(existe){
+      if(existe === null || existe === undefined) ok(code);
+      else buscarCodigoLibre(intentos - 1, ok, falla);
+    })
+    .catch(falla);
+}
+
+function falloAlCrear(){
+  document.getElementById('estado-txt').textContent = 'No se pudo crear tu caso';
+  document.getElementById('estado-detalle').textContent = 'Revisa tu conexión y vuelve a intentarlo.';
+  document.getElementById('sem-rojo').style.display = 'none';
+  document.getElementById('reveal-box').innerHTML =
+    '<div style="text-align:center"><button class="btn btn-primary btn-block" onclick="volverInicio()">Volver a intentarlo</button></div>';
+  localStorage.removeItem('mf_last_case');
+  currentCaseCode = '';
 }
 
 function submitCase(){
@@ -520,35 +565,53 @@ function submitCase(){
   if(gpsLat && gpsLng){
     ubicacionLink = 'https://waze.com/ul?ll='+gpsLat+','+gpsLng+'&navigate=yes';
   }
-  var code='JAM-'+Math.floor(1000+Math.random()*9000);
+  var foto = uploadedPhoto;
 
   document.getElementById('cliente-form').style.display='none';
   document.getElementById('cliente-estado').style.display='block';
-  document.getElementById('caso-code-display').textContent=code;
+  document.getElementById('caso-code-display').textContent='· · ·';
   document.getElementById('cat-elegida').textContent=categoria;
   document.getElementById('sem-rojo').style.display='block';
   document.getElementById('sem-amarillo').style.display='none';
   document.getElementById('sem-verde').style.display='none';
-  document.getElementById('estado-txt').textContent='Buscando técnico...';
-  document.getElementById('estado-detalle').textContent='Guardando caso...';
-  currentCaseCode=code;
-  localStorage.setItem('mf_last_case',code);
+  document.getElementById('sem-morado').style.display='none';
+  document.getElementById('reveal-box').innerHTML='';
+  document.getElementById('estado-txt').textContent='Creando tu caso...';
+  document.getElementById('estado-detalle').textContent='Un momento, por favor.';
 
-  var caso={codigo:code,categoria:categoria,dano:damage,direccion:address||'No especificada',cliente:contacto,celular:celular,estado:'rojo',fecha:new Date().toISOString(),tecnico:'',tecnicoWa:'',calificacion:0,gpsLat:gpsLat,gpsLng:gpsLng,ubicacionLink:ubicacionLink};
+  buscarCodigoLibre(5, function(code){
+    currentCaseCode=code;
+    localStorage.setItem('mf_last_case',code);
+    document.getElementById('caso-code-display').textContent=code;
+    document.getElementById('estado-detalle').textContent='Guardando caso...';
 
-  fetch(FBURL+'/casos/'+code+'.json',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(caso)})
-  .then(function(r){return r.json()})
-  .then(function(){
-    document.getElementById('estado-detalle').textContent='✅ Caso '+code+' guardado. Publicado para '+categoria+'.';
-    startPolling(code);
-  })
-  .catch(function(err){
-    document.getElementById('estado-detalle').textContent='⚠️ Error: '+err.message;
-  });
+    var caso={codigo:code,categoria:categoria,dano:damage,direccion:address||'No especificada',cliente:contacto,celular:celular,estado:'rojo',fecha:new Date().toISOString(),tecnico:'',tecnicoWa:'',calificacion:0,gpsLat:gpsLat,gpsLng:gpsLng,ubicacionLink:ubicacionLink,tieneFoto:false};
 
-  var waMsg='🔧 NUEVA SOLICITUD\n🔖 '+code+'\n📋 '+categoria+'\n🔍 '+damage+'\n📍 '+(address||'N/A')+(ubicacionLink?'\n🗺️ Ubicación: '+ubicacionLink:'')+'\n👤 '+nombre+'\n📱 '+celular;
-  var waUrl='https://wa.me/573244779393?text='+encodeURIComponent(waMsg);
-  document.getElementById('reveal-box').innerHTML='<div style="text-align:center;margin-top:10px"><a href="'+waUrl+'" target="_blank" class="btn btn-primary" style="display:inline-block;text-decoration:none;background:var(--wa);color:#fff;padding:14px 24px;font-size:14px">📩 Enviar solicitud por WhatsApp</a><p style="font-size:11px;color:var(--steel);margin:8px 0 0">Toca para notificar a Mi Ferretería de tu solicitud</p></div>';
+    fetch(FBURL+'/casos/'+code+'.json',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(caso)})
+    .then(function(r){ if(!r.ok) throw new Error('no se guardo'); return r.json(); })
+    .then(function(){
+      if(!foto) return false;
+      // La foto va en su propia rama para no engordar la lista de casos.
+      document.getElementById('estado-detalle').textContent='Subiendo tu foto...';
+      return fetch(FBURL+'/fotos/'+code+'.json',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(foto)})
+        .then(function(r){ if(!r.ok) throw new Error('foto'); })
+        .then(function(){
+          return fetch(FBURL+'/casos/'+code+'.json',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({tieneFoto:true})});
+        })
+        .then(function(){ return true; })
+        .catch(function(){ return 'error'; });
+    })
+    .then(function(estadoFoto){
+      document.getElementById('estado-txt').textContent='Buscando técnico...';
+      var nota = estadoFoto === 'error' ? ' La foto no se pudo subir.' : '';
+      document.getElementById('estado-detalle').textContent='Caso '+code+' publicado para '+categoria+'.'+nota;
+      startPolling(code);
+      var waMsg='🔧 NUEVA SOLICITUD\n🔖 '+code+'\n📋 '+categoria+'\n🔍 '+damage+'\n📍 '+(address||'N/A')+(ubicacionLink?'\n🗺️ Ubicación: '+ubicacionLink:'')+'\n👤 '+nombre+'\n📱 '+celular;
+      var waUrl='https://wa.me/573244779393?text='+encodeURIComponent(waMsg);
+      document.getElementById('reveal-box').innerHTML='<div style="text-align:center;margin-top:10px"><a href="'+waUrl+'" target="_blank" class="btn btn-primary" style="display:inline-block;text-decoration:none;background:var(--wa);color:#fff;padding:14px 24px;font-size:14px">📩 Enviar solicitud por WhatsApp</a><p style="font-size:11px;color:var(--steel);margin:8px 0 0">Toca para notificar a Mi Ferretería de tu solicitud</p></div>';
+    })
+    .catch(function(){ falloAlCrear(); });
+  }, function(){ falloAlCrear(); });
 }
 
 function actualizarSemaforo(c,code){
@@ -735,6 +798,7 @@ function loadAdminCases(){
       if(filtroActual!=='todos'&&x.estado!==filtroActual)continue;
       var col=x.estado==='rojo'?'#C43D2E':x.estado==='amarillo'?'#F2B705':x.estado==='cerrado'?'#7A4FBF':'#3C8F5C';
       var act='';
+      var verFotoBtn = x.tieneFoto ? '<button class="btn btn-ghost" onclick="verFoto(\x27'+x.codigo+'\x27)">Ver foto</button> ' : '';
       if(x.estado==='rojo')act='<button class="btn btn-primary" onclick="asignarTec(\x27'+x.codigo+'\x27)">Asignar técnico</button>';
       else if(x.estado==='amarillo')act='<button class="btn btn-primary" onclick="completarCaso(\x27'+x.codigo+'\x27)">Completado</button>';
       else if(x.estado==='cerrado')act='<span class="badge">Cancelado por el cliente</span>';
@@ -743,12 +807,34 @@ function loadAdminCases(){
       if(x.fecha){var d=new Date(x.fecha);fechaTxt=d.toLocaleDateString('es-CO')+' '+d.toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'});}
       var gpsLink='';
       if(x.ubicacionLink)gpsLink='<div class="sub"><a href="'+x.ubicacionLink+'" target="_blank" style="color:#2E6FE0;font-weight:700;font-size:11px;text-decoration:none">\ud83d\uddfa\ufe0f Ver ubicación en Waze</a></div>';
+      act = verFotoBtn + act;
       h+='<div class="case-row" style="border-left:4px solid '+col+'"><div class="case-info"><div style="width:12px;height:12px;border-radius:50%;background:'+col+';flex-shrink:0"></div><div><b>'+x.codigo+'</b> — '+x.categoria+'<div class="sub">'+x.dano+'</div><div class="sub">\ud83d\udccd '+x.direccion+' · \ud83d\udc64 '+x.cliente+'</div><div class="sub">\ud83d\udd50 '+fechaTxt+'</div>'+gpsLink+(x.tecnico?'<div class="sub" style="color:var(--teal)">Técnico: '+x.tecnico+'</div>':'')+'</div></div>'+act+'</div>';
     }
     document.getElementById('admin-stats').innerHTML='<div class="stat-row"><div class="stat"><div class="num" style="color:#C43D2E">'+sR+'</div><div class="lbl">\ud83d\udd34 Sin asignar</div></div><div class="stat"><div class="num" style="color:#F2B705">'+sA+'</div><div class="lbl">\ud83d\udfe1 En atención</div></div><div class="stat"><div class="num" style="color:#3C8F5C">'+sV+'</div><div class="lbl">\ud83d\udfe2 Cerrados</div></div></div>';
     c.innerHTML=h||'<p style="color:var(--steel)">No hay casos con este filtro.</p>';
   }).catch(function(err){c.innerHTML='<p style="color:red">Error: '+err.message+'</p>';});
 }
+function verFoto(code){
+  var ov=document.getElementById('foto-overlay');
+  if(!ov){
+    ov=document.createElement('div');
+    ov.id='foto-overlay';
+    ov.style.cssText='position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.85);'+
+      'display:flex;align-items:center;justify-content:center;flex-direction:column;padding:20px;gap:14px';
+    ov.addEventListener('click',function(){ ov.style.display='none'; });
+    document.body.appendChild(ov);
+  }
+  ov.style.display='flex';
+  ov.innerHTML='<p style="color:#fff;font-family:sans-serif">Cargando foto...</p>';
+  fetch(FBURL+'/fotos/'+code+'.json').then(function(r){return r.json()}).then(function(foto){
+    if(!foto){ ov.innerHTML='<p style="color:#fff;font-family:sans-serif">Este caso no tiene foto.</p>'; return; }
+    ov.innerHTML='<img src="'+foto+'" style="max-width:100%;max-height:80vh;border-radius:8px;border:4px solid #fff">'+
+      '<p style="color:#fff;font-family:sans-serif;font-size:13px;margin:0">Caso '+code+' — toca para cerrar</p>';
+  }).catch(function(){
+    ov.innerHTML='<p style="color:#fff;font-family:sans-serif">No se pudo cargar la foto. Revisa tu conexión.</p>';
+  });
+}
+
 function asignarTec(code){
   var n=prompt('Nombre del técnico:');if(!n)return;
   var w=prompt('WhatsApp del técnico (solo números, ej: 3001234567):');if(!w)return;
