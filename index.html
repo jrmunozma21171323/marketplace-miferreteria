@@ -265,8 +265,8 @@ tr:last-child td{border-bottom:none;}
     </div>
     <div class="tabs">
       <button class="active" data-view="cliente" onclick="switchView('cliente')">Cliente</button>
-      <button data-view="tecnico" onclick="switchView('tecnico')">Técnico</button>
-      <button data-view="negocio" onclick="switchView('negocio')">Negocio</button>
+      <button data-view="tecnico" onclick="switchView('tecnico')" class="admin-only" style="display:none">Técnico</button>
+      <button data-view="negocio" onclick="switchView('negocio')" class="admin-only" style="display:none">Negocio</button>
     </div>
   </header>
 
@@ -469,6 +469,8 @@ function entrarAdmin(){
     adminToken=d.idToken; adminEmail=email;
     sessionStorage.setItem('mf_admin_token',adminToken);
     sessionStorage.setItem('mf_admin_email',adminEmail);
+    localStorage.setItem('mf_admin_visible','1');
+    mostrarPestanasAdmin(true);
     loadAdminCases();
   }).catch(function(){ mostrarLoginAdmin('No se pudo conectar. Revisa tu conexión.'); });
 }
@@ -1085,11 +1087,20 @@ function completeCase(btn){ btn.closest('.case-row').querySelector('button').out
 function openPkg(){ document.getElementById('pkg-overlay').classList.add('on'); }
 function closePkg(){ document.getElementById('pkg-overlay').classList.remove('on'); }
 function buyPkg(n){ credits += n; updateCredits(); closePkg(); }
-// Show admin tabs if ?admin=1 in URL
-if(window.location.search.indexOf('admin=1')!==-1){
-  var adminBtns=document.querySelectorAll('.admin-only');
-  for(var i=0;i<adminBtns.length;i++)adminBtns[i].style.display='';
+// Las pestanas de Tecnico y Negocio no son para el cliente. Se destapan
+// entrando una vez con ?admin=1 y este aparato lo recuerda; con ?admin=0
+// se vuelven a esconder. Lo que protege los datos es el login del panel,
+// no que la pestana este escondida.
+function mostrarPestanasAdmin(ver){
+  var b=document.querySelectorAll('.admin-only');
+  for(var i=0;i<b.length;i++) b[i].style.display = ver ? '' : 'none';
 }
+(function(){
+  var q=window.location.search;
+  if(q.indexOf('admin=0')!==-1){ localStorage.removeItem('mf_admin_visible'); mostrarPestanasAdmin(false); return; }
+  if(q.indexOf('admin=1')!==-1){ localStorage.setItem('mf_admin_visible','1'); }
+  if(localStorage.getItem('mf_admin_visible')==='1') mostrarPestanasAdmin(true);
+})();
 checkLastCase();
 </script>
 </body>
