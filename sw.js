@@ -10,7 +10,7 @@
  * Eso borra el caché viejo y obliga a la app a refrescarse en todos los celulares.
  */
 
-const VERSION = 8;
+const VERSION = 9;
 const CACHE = 'todero-v' + VERSION;
 const TIEMPO_MAX_RED = 4000; // ms que esperamos a la red antes de usar el caché
 

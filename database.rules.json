@@ -1,0 +1,42 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "casos": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+
+      "$codigo": {
+        ".read": true,
+
+        ".write": "newData.exists() && (!data.exists() || data.child('codigo').val() === newData.child('codigo').val())",
+
+        ".validate": "newData.hasChildren(['codigo', 'categoria', 'estado', 'fecha']) && (!data.exists() || auth != null || (newData.child('tecnico').val() === data.child('tecnico').val() && newData.child('tecnicoWa').val() === data.child('tecnicoWa').val() && newData.child('celular').val() === data.child('celular').val() && newData.child('fecha').val() === data.child('fecha').val()))",
+
+        "codigo":    { ".validate": "newData.isString() && newData.val().length <= 20" },
+        "categoria": { ".validate": "newData.isString() && newData.val().length <= 60" },
+        "dano":      { ".validate": "newData.isString() && newData.val().length <= 600" },
+        "direccion": { ".validate": "newData.isString() && newData.val().length <= 250" },
+        "cliente":   { ".validate": "newData.isString() && newData.val().length <= 150" },
+        "celular":   { ".validate": "newData.isString() && newData.val().length <= 20" },
+        "estado":    { ".validate": "newData.val() === 'rojo' || newData.val() === 'amarillo' || newData.val() === 'verde' || newData.val() === 'cerrado'" },
+        "fecha":     { ".validate": "newData.isString() && newData.val().length <= 40" },
+        "tieneFoto": { ".validate": "newData.isBoolean()" },
+
+        "$otro": { ".validate": true }
+      }
+    },
+
+    "fotos": {
+      ".read": "auth != null",
+      ".write": "auth != null",
+
+      "$codigo": {
+        ".read": true,
+        ".write": "auth != null || (!data.exists() && newData.isString() && newData.val().length <= 600000)",
+        ".validate": "newData.isString()"
+      }
+    }
+  }
+}

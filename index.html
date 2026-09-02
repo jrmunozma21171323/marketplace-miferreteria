@@ -422,6 +422,70 @@ tr:last-child td{border-bottom:none;}
 
 <script>
 var FBURL='https://marketplace-ferreteria-jamundi-default-rtdb.firebaseio.com';
+
+// Clave web del proyecto Firebase. NO es un secreto: va en el codigo de
+// cualquier app web y solo sirve para pedirle a Firebase que valide un
+// correo y una contrasena. Se saca de la consola de Firebase:
+// Configuracion del proyecto > General > Clave de API web.
+var FB_API_KEY='PEGA_AQUI_LA_CLAVE_WEB';
+
+// Sesion del dueno para el panel de Negocio. Vive solo mientras la pestana
+// este abierta: al cerrar la app hay que volver a entrar.
+var adminToken=sessionStorage.getItem('mf_admin_token')||'';
+var adminEmail=sessionStorage.getItem('mf_admin_email')||'';
+
+// Le pega la llave del dueno a las rutas del panel. Las llamadas del
+// cliente NO la llevan: esas entran por conocer el codigo del caso.
+function conLlave(ruta){
+  if(!adminToken) return FBURL+ruta;
+  return FBURL+ruta+(ruta.indexOf('?')>-1?'&':'?')+'auth='+adminToken;
+}
+
+function mostrarLoginAdmin(msg){
+  var st=document.getElementById('admin-stats'); if(st) st.innerHTML='';
+  var c=document.getElementById('admin-cases'); if(!c) return;
+  c.innerHTML='<div class="card" style="max-width:360px;margin:0 auto;text-align:center">'+
+    '<p style="font-size:14px;font-weight:700;margin:0 0 4px">Panel del negocio</p>'+
+    '<p style="font-size:12px;color:var(--steel);margin:0 0 14px">Entra con tu cuenta para ver los casos.</p>'+
+    '<div class="form-row"><input type="email" id="admin-email" placeholder="Correo" value="'+adminEmail+'"></div>'+
+    '<div class="form-row"><input type="password" id="admin-pass" placeholder="Contraseña"></div>'+
+    '<button class="btn btn-primary btn-block" onclick="entrarAdmin()">Entrar</button>'+
+    (msg?'<p style="color:var(--rust);font-size:12px;font-weight:600;margin:10px 0 0">'+msg+'</p>':'')+
+    '</div>';
+}
+
+function entrarAdmin(){
+  var email=(document.getElementById('admin-email')||{}).value||'';
+  var pass=(document.getElementById('admin-pass')||{}).value||'';
+  email=email.trim();
+  if(!email||!pass){ mostrarLoginAdmin('Escribe tu correo y tu contraseña.'); return; }
+  if(FB_API_KEY.indexOf('PEGA_AQUI')===0){ mostrarLoginAdmin('Falta poner la clave web de Firebase en el código.'); return; }
+  document.getElementById('admin-cases').innerHTML='<p style="color:var(--steel)">Entrando...</p>';
+  fetch('https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key='+FB_API_KEY,{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({email:email,password:pass,returnSecureToken:true})
+  }).then(function(r){return r.json()}).then(function(d){
+    if(!d||!d.idToken){ mostrarLoginAdmin('Correo o contraseña incorrectos.'); return; }
+    adminToken=d.idToken; adminEmail=email;
+    sessionStorage.setItem('mf_admin_token',adminToken);
+    sessionStorage.setItem('mf_admin_email',adminEmail);
+    loadAdminCases();
+  }).catch(function(){ mostrarLoginAdmin('No se pudo conectar. Revisa tu conexión.'); });
+}
+
+function salirAdmin(msg){
+  adminToken=''; adminEmail=adminEmail||'';
+  sessionStorage.removeItem('mf_admin_token');
+  mostrarLoginAdmin(msg);
+}
+
+function barraAdmin(){
+  return '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;'+
+    'margin-bottom:12px;font-size:11.5px;color:var(--steel)">'+
+    '<span>Conectado como <b>'+adminEmail+'</b></span>'+
+    '<button class="btn btn-ghost" style="font-size:11px;padding:6px 12px" onclick="salirAdmin()">Salir</button>'+
+    '</div>';
+}
 var currentCaseCode='';
 var semaforoInterval=null;
 
@@ -784,10 +848,15 @@ function filtrarCasos(f){filtroActual=f;loadAdminCases();}
 
 function loadAdminCases(){
   var c=document.getElementById('admin-cases');if(!c)return;
+  if(!adminToken){ mostrarLoginAdmin(); return; }
   c.innerHTML='<p style="color:var(--steel)">Cargando...</p>';
   var ids=['todos','rojo','amarillo','verde'];
   for(var b=0;b<ids.length;b++){var btn=document.getElementById('fil-'+ids[b]);if(btn)btn.className=ids[b]===filtroActual?'btn btn-primary':'btn btn-ghost';}
-  fetch(FBURL+'/casos.json').then(function(r){return r.json()}).then(function(data){
+  fetch(conLlave('/casos.json')).then(function(r){
+    if(r.status===401||r.status===403){ salirAdmin('Tu sesión venció. Vuelve a entrar.'); throw new Error('sesion'); }
+    if(!r.ok) throw new Error('respuesta '+r.status);
+    return r.json();
+  }).then(function(data){
     if(!data){c.innerHTML='<p style="color:var(--steel)">No hay casos.</p>';document.getElementById('admin-stats').innerHTML='';return;}
     var arr=[];for(var k in data){if(data.hasOwnProperty(k))arr.push(data[k]);}
     arr.sort(function(a,b){return b.fecha>a.fecha?1:-1;});
@@ -811,8 +880,11 @@ function loadAdminCases(){
       h+='<div class="case-row" style="border-left:4px solid '+col+'"><div class="case-info"><div style="width:12px;height:12px;border-radius:50%;background:'+col+';flex-shrink:0"></div><div><b>'+x.codigo+'</b> — '+x.categoria+'<div class="sub">'+x.dano+'</div><div class="sub">\ud83d\udccd '+x.direccion+' · \ud83d\udc64 '+x.cliente+'</div><div class="sub">\ud83d\udd50 '+fechaTxt+'</div>'+gpsLink+(x.tecnico?'<div class="sub" style="color:var(--teal)">Técnico: '+x.tecnico+'</div>':'')+'</div></div>'+act+'</div>';
     }
     document.getElementById('admin-stats').innerHTML='<div class="stat-row"><div class="stat"><div class="num" style="color:#C43D2E">'+sR+'</div><div class="lbl">\ud83d\udd34 Sin asignar</div></div><div class="stat"><div class="num" style="color:#F2B705">'+sA+'</div><div class="lbl">\ud83d\udfe1 En atención</div></div><div class="stat"><div class="num" style="color:#3C8F5C">'+sV+'</div><div class="lbl">\ud83d\udfe2 Cerrados</div></div></div>';
-    c.innerHTML=h||'<p style="color:var(--steel)">No hay casos con este filtro.</p>';
-  }).catch(function(err){c.innerHTML='<p style="color:red">Error: '+err.message+'</p>';});
+    c.innerHTML=barraAdmin()+(h||'<p style="color:var(--steel)">No hay casos con este filtro.</p>');
+  }).catch(function(err){
+    if(err.message==='sesion') return;
+    c.innerHTML='<p style="color:var(--rust);font-weight:600">No se pudieron cargar los casos: '+err.message+'</p>';
+  });
 }
 function verFoto(code){
   var ov=document.getElementById('foto-overlay');
@@ -826,7 +898,7 @@ function verFoto(code){
   }
   ov.style.display='flex';
   ov.innerHTML='<p style="color:#fff;font-family:sans-serif">Cargando foto...</p>';
-  fetch(FBURL+'/fotos/'+code+'.json').then(function(r){return r.json()}).then(function(foto){
+  fetch(conLlave('/fotos/'+code+'.json')).then(function(r){return r.json()}).then(function(foto){
     if(!foto){ ov.innerHTML='<p style="color:#fff;font-family:sans-serif">Este caso no tiene foto.</p>'; return; }
     ov.innerHTML='<img src="'+foto+'" style="max-width:100%;max-height:80vh;border-radius:8px;border:4px solid #fff">'+
       '<p style="color:#fff;font-family:sans-serif;font-size:13px;margin:0">Caso '+code+' — toca para cerrar</p>';
@@ -838,8 +910,8 @@ function verFoto(code){
 function asignarTec(code){
   var n=prompt('Nombre del técnico:');if(!n)return;
   var w=prompt('WhatsApp del técnico (solo números, ej: 3001234567):');if(!w)return;
-  fetch(FBURL+'/casos/'+code+'.json').then(function(r){return r.json()}).then(function(caso){
-    return fetch(FBURL+'/casos/'+code+'.json',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({estado:'amarillo',tecnico:n,tecnicoWa:w})}).then(function(){
+  fetch(conLlave('/casos/'+code+'.json')).then(function(r){return r.json()}).then(function(caso){
+    return fetch(conLlave('/casos/'+code+'.json'),{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({estado:'amarillo',tecnico:n,tecnicoWa:w})}).then(function(){
       var msjTec='CASO ASIGNADO - Mi Ferretería\nCaso: '+code+'\n'+caso.categoria+'\n'+caso.dano+'\nDirección: '+caso.direccion+'\nCliente: '+caso.cliente+(caso.ubicacionLink?'\nUbicación: '+caso.ubicacionLink:'')+'\nContacta al cliente para coordinar.';
       window.open('https://wa.me/57'+w+'?text='+encodeURIComponent(msjTec),'_blank');
       loadAdminCases();
@@ -848,7 +920,7 @@ function asignarTec(code){
 }
 function completarCaso(code){
   if(!confirm('¿Confirmas que el servicio fue completado?'))return;
-  fetch(FBURL+'/casos/'+code+'.json',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({estado:'verde'})})
+  fetch(conLlave('/casos/'+code+'.json'),{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({estado:'verde'})})
   .then(function(){alert('\u2705 '+code+' completado');loadAdminCases();})
   .catch(function(err){alert('Error: '+err.message);});
 }
