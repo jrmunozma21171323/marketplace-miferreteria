@@ -10,7 +10,7 @@
     },
 
     "casos": {
-      ".read": "auth !== null && root.child('admins').child(auth.uid).val() === true",
+      ".read": "auth !== null && (root.child('admins').child(auth.uid).val() === true || root.child('tecnicos').child(auth.uid).child('activo').val() === true)",
       ".write": "auth !== null && root.child('admins').child(auth.uid).val() === true",
 
       "$codigo": {
@@ -18,17 +18,40 @@
 
         ".write": "newData.exists() && (!data.exists() || data.child('codigo').val() === newData.child('codigo').val())",
 
-        ".validate": "newData.hasChildren(['codigo', 'categoria', 'estado', 'fecha']) && (!data.exists() || root.child('admins').child(auth.uid).val() === true || (newData.child('tecnico').val() === data.child('tecnico').val() && newData.child('tecnicoWa').val() === data.child('tecnicoWa').val() && newData.child('celular').val() === data.child('celular').val() && newData.child('fecha').val() === data.child('fecha').val()))",
+        ".validate": "newData.hasChildren(['codigo', 'categoria', 'estado', 'fecha']) && (!data.exists() || (auth !== null && root.child('admins').child(auth.uid).val() === true) || (auth !== null && root.child('tecnicos').child(auth.uid).child('activo').val() === true && data.child('estado').val() === 'rojo' && newData.child('estado').val() === 'amarillo' && newData.child('tecnicoUid').val() === auth.uid && newData.child('categoria').val() === data.child('categoria').val() && newData.child('dano').val() === data.child('dano').val() && newData.child('zona').val() === data.child('zona').val() && newData.child('fecha').val() === data.child('fecha').val()) || (newData.child('tecnico').val() === data.child('tecnico').val() && newData.child('tecnicoWa').val() === data.child('tecnicoWa').val() && newData.child('tecnicoUid').val() === data.child('tecnicoUid').val() && newData.child('zona').val() === data.child('zona').val() && newData.child('fecha').val() === data.child('fecha').val()))",
 
-        "codigo":    { ".validate": "newData.isString() && newData.val().length <= 20" },
-        "categoria": { ".validate": "newData.isString() && newData.val().length <= 60" },
-        "dano":      { ".validate": "newData.isString() && newData.val().length <= 600" },
-        "direccion": { ".validate": "newData.isString() && newData.val().length <= 250" },
-        "cliente":   { ".validate": "newData.isString() && newData.val().length <= 150" },
-        "celular":   { ".validate": "newData.isString() && newData.val().length <= 20" },
-        "estado":    { ".validate": "newData.val() === 'rojo' || newData.val() === 'amarillo' || newData.val() === 'verde' || newData.val() === 'cerrado'" },
-        "fecha":     { ".validate": "newData.isString() && newData.val().length <= 40" },
-        "tieneFoto": { ".validate": "newData.isBoolean()" },
+        "codigo":     { ".validate": "newData.isString() && newData.val().length <= 20" },
+        "categoria":  { ".validate": "newData.isString() && newData.val().length <= 60" },
+        "dano":       { ".validate": "newData.isString() && newData.val().length <= 600" },
+        "zona":       { ".validate": "newData.isString() && newData.val().length <= 60" },
+        "estado":     { ".validate": "newData.val() === 'rojo' || newData.val() === 'amarillo' || newData.val() === 'verde' || newData.val() === 'cerrado'" },
+        "fecha":      { ".validate": "newData.isString() && newData.val().length <= 40" },
+        "tecnico":    { ".validate": "newData.isString() && newData.val().length <= 80" },
+        "tecnicoWa":  { ".validate": "newData.isString() && newData.val().length <= 20" },
+        "tecnicoUid": { ".validate": "newData.isString() && newData.val().length <= 60" },
+        "tieneFoto":  { ".validate": "newData.isBoolean()" },
+
+        "$otro": { ".validate": true }
+      }
+    },
+
+    "contactos": {
+      ".read": "auth !== null && root.child('admins').child(auth.uid).val() === true",
+      ".write": "auth !== null && root.child('admins').child(auth.uid).val() === true",
+
+      "$codigo": {
+        ".read": "auth !== null && (root.child('admins').child(auth.uid).val() === true || root.child('casos').child($codigo).child('tecnicoUid').val() === auth.uid)",
+
+        ".write": "!data.exists() && newData.exists()",
+
+        ".validate": "newData.hasChildren(['cliente', 'celular'])",
+
+        "cliente":       { ".validate": "newData.isString() && newData.val().length <= 150" },
+        "celular":       { ".validate": "newData.isString() && newData.val().length <= 20" },
+        "direccion":     { ".validate": "newData.isString() && newData.val().length <= 250" },
+        "gpsLat":        { ".validate": "newData.isString() && newData.val().length <= 40" },
+        "gpsLng":        { ".validate": "newData.isString() && newData.val().length <= 40" },
+        "ubicacionLink": { ".validate": "newData.isString() && newData.val().length <= 250" },
 
         "$otro": { ".validate": true }
       }

@@ -136,6 +136,7 @@ header{display:flex;align-items:center;justify-content:space-between;flex-wrap:w
 .card.highlight-pulse{animation:highlight-pulse-anim 1.3s ease-out;}
 .form-row{margin-bottom:14px;}
 .form-row label{display:block;font-size:10.5px;font-weight:700;color:var(--steel);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px;}
+.form-row select{width:100%;padding:11px 12px;border:2px solid var(--charcoal);border-radius:7px;font-family:inherit;font-size:14px;background:#fff;color:var(--charcoal);appearance:none;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2322262A' stroke-width='3'><path d='M6 9l6 6 6-6'/></svg>");background-repeat:no-repeat;background-position:right 10px center;background-size:16px;padding-right:34px;}
 .form-row input,.form-row select{width:100%;padding:10px 12px;border:1.5px solid var(--steel);border-radius:6px;font-family:'IBM Plex Sans';font-size:13px;background:#fff;}
 .damage-chips{display:flex;flex-wrap:wrap;gap:7px;}
 .dmg-chip{padding:8px 12px;border:1.5px solid var(--steel);border-radius:999px;font-size:12px;font-weight:600;cursor:pointer;background:#fff;transition:.12s;user-select:none;}
@@ -350,6 +351,7 @@ tr:last-child td{border-bottom:none;}
           <input type="file" id="photo-input" accept="image/*" style="display:none;" onchange="previewPhoto(event)">
         </div>
         <div class="form-row"><label>Dirección o punto de referencia</label><input type="text" id="address-input" placeholder="Ej: Calle 10 #5-23, apto 302"><div style="margin-top:6px"><button type="button" class="btn btn-ghost" onclick="capturarUbicacion()" id="btn-gps" style="font-size:11px;padding:8px 12px">📍 Usar mi ubicación actual</button><span id="gps-status" style="font-size:11px;color:var(--teal);margin-left:8px"></span></div><input type="hidden" id="gps-lat"><input type="hidden" id="gps-lng"></div>
+        <div class="form-row"><label>Barrio o zona</label><select id="zona-input"><option value="">Elige tu barrio o zona</option><option value="El Castillo">El Castillo</option><option value="Ciudad Country">Ciudad Country</option><option value="Cinco Soles">Cinco Soles</option><option value="La Morada">La Morada</option><option value="Verdi">Verdi</option><option value="Terranova">Terranova</option><option value="Bonanza">Bonanza</option><option value="Centro">Centro</option><option value="Alfaguara">Alfaguara</option><option value="Las Mercedes">Las Mercedes</option><option value="Palmetum Park">Palmetum Park</option><option value="Miravalle">Miravalle</option><option value="Potrerito">Potrerito</option><option value="La Pradera">La Pradera</option><option value="Centenario">Centenario</option><option value="Los Libertadores">Los Libertadores</option><option value="Villa Pyme">Villa Pyme</option><option value="Sector La Galería">Sector La Galería</option><option value="Sector Cementerio Central">Sector Cementerio Central</option><option value="Otro">Otro</option></select></div>
         <div class="form-row"><label>Tu nombre</label><input type="text" id="nombre-input" placeholder="Ej: Juan Pérez"></div>
         <div class="form-row"><label>Tu número de celular</label><input type="tel" id="celular-input" placeholder="Ej: 3162100289" maxlength="10" oninput="this.value=this.value.replace(/[^0-9]/g,'')"><span id="celular-error" style="color:var(--rust);font-size:11px;display:none">El celular debe tener 10 dígitos y empezar con 3</span></div>
         <button class="btn btn-primary btn-block" onclick="submitCase()">Buscar técnico</button>
@@ -385,18 +387,25 @@ tr:last-child td{border-bottom:none;}
 
   <!-- ========== TECNICO ========== -->
   <div id="view-tecnico" class="view">
-    <div class="card tech-header">
-      <div class="tech-id"><div class="ph"></div><div><h3>Wilmer Ortiz</h3><div class="meta">Plomería · Ciudad Bochica</div><div class="stars">★★★★★<span>(34 servicios)</span></div><span class="badge destacado">⭐ DESTACADO</span></div></div>
-      <div class="credit-box"><div class="num" id="credit-num">12</div><div class="lbl">Créditos</div><button class="btn btn-ghost" style="margin-top:6px;" onclick="openPkg()">Comprar más</button></div>
+    <div id="tec-login"></div>
+    <div id="tec-panel" style="display:none">
+      <div class="card tech-header">
+        <div class="tech-id"><div>
+          <h3 id="tec-nombre-h">—</h3>
+          <div class="meta" id="tec-oficios-h"></div>
+        </div></div>
+        <div class="credit-box">
+          <div class="num" id="credit-num">0</div>
+          <div class="lbl">Créditos</div>
+          <button class="btn btn-ghost" style="margin-top:6px" onclick="salirTecnico()">Salir</button>
+        </div>
+      </div>
+      <h2 class="section-title">Casos disponibles para tus oficios</h2>
+      <p class="subtext">Ves el oficio, el daño y la zona. Los datos de contacto se abren cuando tomas el caso.</p>
+      <div id="tech-available"></div>
+      <h2 class="section-title">Tus casos activos</h2>
+      <div id="tech-active"></div>
     </div>
-    <h2 class="section-title">Casos disponibles en tu zona</h2>
-    <p class="subtext">Si el cliente adjuntó foto, la ves aquí antes de decidir.</p>
-    <div id="tech-available">
-      <div class="case-row" data-case="1" data-waze="https://waze.com/ul?q=Cra%205%20%2312-34%2C%20Ciudad%20Bochica%2C%20Jamund%C3%AD&navigate=yes"><div class="case-info"><div class="ic">🔧</div><div><b>Fuga de agua</b><div class="sub">Cra 5 #12-34 · hace 4 min</div><a href="https://waze.com/ul?q=Cra%205%20%2312-34%2C%20Ciudad%20Bochica%2C%20Jamund%C3%AD&navigate=yes" target="_blank" class="waze-link" onclick="event.stopPropagation()">📍 Waze</a></div></div><button class="btn btn-primary" onclick="takeCase(this,1)">Tomar (-1 crédito)</button></div>
-      <div class="case-row" data-case="2" data-waze="https://waze.com/ul?q=Calle%208%20%233-10%2C%20Centro%2C%20Jamund%C3%AD&navigate=yes"><div class="case-info"><div class="ic">⚡</div><div><b>Breaker no enciende</b><div class="sub">Calle 8 #3-10 · hace 22 min</div><a href="https://waze.com/ul?q=Calle%208%20%233-10%2C%20Centro%2C%20Jamund%C3%AD&navigate=yes" target="_blank" class="waze-link" onclick="event.stopPropagation()">📍 Waze</a></div></div><button class="btn btn-primary" onclick="takeCase(this,2)">Tomar (-1 crédito)</button></div>
-    </div>
-    <h2 class="section-title">Tus casos activos</h2>
-    <div id="tech-active"><p style="color:var(--steel);font-size:12px;">Aún no has tomado ningún caso.</p></div>
   </div>
 
   <!-- ========== NEGOCIO ========== -->
@@ -649,6 +658,7 @@ function switchView(v){
   document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('active', b.dataset.view===v));
   window.scrollTo({top:0, behavior:'smooth'});
   if(v==='negocio')loadAdminCases();
+  if(v==='tecnico')iniciarVistaTecnico();
 }
 
 /// Categories rendered in static HTML
@@ -727,11 +737,13 @@ function submitCase(){
   var categoria = selectedCat ? selectedCat.name : 'No especificada';
   var damage = chosen.length ? chosen.join(', ') : categoria;
   var address = document.getElementById('address-input').value.trim();
+  var zona = document.getElementById('zona-input').value;
   var nombre = document.getElementById('nombre-input').value.trim();
   var celular = document.getElementById('celular-input').value.trim();
   var gpsLat = document.getElementById('gps-lat').value;
   var gpsLng = document.getElementById('gps-lng').value;
 
+  if(!zona){alert('Elige tu barrio o zona. Es lo que le permite al técnico saber si te queda cerca.');return;}
   if(!nombre){alert('Escribe tu nombre');return;}
   if(!validarCelular(celular)){
     document.getElementById('celular-error').style.display='block';
@@ -764,10 +776,20 @@ function submitCase(){
     document.getElementById('caso-code-display').textContent=code;
     document.getElementById('estado-detalle').textContent='Guardando caso...';
 
-    var caso={codigo:code,categoria:categoria,dano:damage,direccion:address||'No especificada',cliente:contacto,celular:celular,estado:'rojo',fecha:new Date().toISOString(),tecnico:'',tecnicoWa:'',calificacion:0,gpsLat:gpsLat,gpsLng:gpsLng,ubicacionLink:ubicacionLink,tieneFoto:false};
+    // Lo que puede ver cualquier tecnico del oficio para decidir.
+    var caso={codigo:code,categoria:categoria,dano:damage,zona:zona,estado:'rojo',
+             fecha:new Date().toISOString(),tecnico:'',tecnicoWa:'',tecnicoUid:'',
+             calificacion:0,tieneFoto:false};
+    // Lo que solo se abre para el tecnico que TOME el caso.
+    var contacto2={cliente:contacto,celular:celular,direccion:address||'No especificada',
+                  gpsLat:gpsLat,gpsLng:gpsLng,ubicacionLink:ubicacionLink};
 
     fetch(FBURL+'/casos/'+code+'.json',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(caso)})
     .then(function(r){ if(!r.ok) throw new Error('no se guardo'); return r.json(); })
+    .then(function(){
+      return fetch(FBURL+'/contactos/'+code+'.json',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(contacto2)})
+        .then(function(r){ if(!r.ok) throw new Error('no se guardaron tus datos de contacto'); });
+    })
     .then(function(){
       if(!foto) return false;
       // La foto va en su propia rama para no engordar la lista de casos.
@@ -967,13 +989,26 @@ function loadAdminCases(){
   c.innerHTML='<p style="color:var(--steel)">Cargando...</p>';
   var ids=['todos','rojo','amarillo','verde'];
   for(var b=0;b<ids.length;b++){var btn=document.getElementById('fil-'+ids[b]);if(btn)btn.className=ids[b]===filtroActual?'btn btn-primary':'btn btn-ghost';}
-  fetch(conLlave('/casos.json')).then(function(r){
-    if(r.status===401||r.status===403){ salirAdmin('Tu sesión venció. Vuelve a entrar.'); throw new Error('sesion'); }
-    if(!r.ok) throw new Error('respuesta '+r.status);
-    return r.json();
-  }).then(function(data){
+  // Los datos de contacto viven aparte, asi que se piden aparte y se juntan.
+  Promise.all([
+    fetch(conLlave('/casos.json')).then(function(r){
+      if(r.status===401||r.status===403){ salirAdmin('Tu sesión venció. Vuelve a entrar.'); throw new Error('sesion'); }
+      if(!r.ok) throw new Error('respuesta '+r.status);
+      return r.json();
+    }),
+    fetch(conLlave('/contactos.json')).then(function(r){ return r.ok ? r.json() : null; }).catch(function(){ return null; })
+  ]).then(function(par){
+    var data=par[0], contactos=par[1]||{};
     if(!data){c.innerHTML='<p style="color:var(--steel)">No hay casos.</p>';document.getElementById('admin-stats').innerHTML='';return;}
-    var arr=[];for(var k in data){if(data.hasOwnProperty(k))arr.push(data[k]);}
+    var arr=[];
+    for(var k in data){ if(!data.hasOwnProperty(k)) continue;
+      var caso=data[k];
+      var ct=contactos[k]||{};
+      caso.cliente=ct.cliente||'—';
+      caso.direccion=ct.direccion||'—';
+      caso.ubicacionLink=ct.ubicacionLink||'';
+      arr.push(caso);
+    }
     arr.sort(function(a,b){return b.fecha>a.fecha?1:-1;});
     var sR=0,sA=0,sV=0,h='';
     for(var i=0;i<arr.length;i++){
@@ -992,7 +1027,7 @@ function loadAdminCases(){
       var gpsLink='';
       if(x.ubicacionLink)gpsLink='<div class="sub"><a href="'+x.ubicacionLink+'" target="_blank" style="color:#2E6FE0;font-weight:700;font-size:11px;text-decoration:none">\ud83d\uddfa\ufe0f Ver ubicación en Waze</a></div>';
       act = verFotoBtn + act;
-      h+='<div class="case-row" style="border-left:4px solid '+col+'"><div class="case-info"><div style="width:12px;height:12px;border-radius:50%;background:'+col+';flex-shrink:0"></div><div><b>'+x.codigo+'</b> — '+x.categoria+'<div class="sub">'+x.dano+'</div><div class="sub">\ud83d\udccd '+x.direccion+' · \ud83d\udc64 '+x.cliente+'</div><div class="sub">\ud83d\udd50 '+fechaTxt+'</div>'+gpsLink+(x.tecnico?'<div class="sub" style="color:var(--teal)">Técnico: '+x.tecnico+'</div>':'')+'</div></div>'+act+'</div>';
+      h+='<div class="case-row" style="border-left:4px solid '+col+'"><div class="case-info"><div style="width:12px;height:12px;border-radius:50%;background:'+col+';flex-shrink:0"></div><div><b>'+x.codigo+'</b> — '+x.categoria+'<div class="sub">'+x.dano+'</div><div class="sub">Zona: '+(x.zona||'sin zona')+' · '+x.direccion+'</div><div class="sub">Cliente: '+x.cliente+'</div><div class="sub">\ud83d\udd50 '+fechaTxt+'</div>'+gpsLink+(x.tecnico?'<div class="sub" style="color:var(--teal)">Técnico: '+x.tecnico+'</div>':'')+'</div></div>'+act+'</div>';
     }
     document.getElementById('admin-stats').innerHTML='<div class="stat-row"><div class="stat"><div class="num" style="color:#C43D2E">'+sR+'</div><div class="lbl">\ud83d\udd34 Sin asignar</div></div><div class="stat"><div class="num" style="color:#F2B705">'+sA+'</div><div class="lbl">\ud83d\udfe1 En atención</div></div><div class="stat"><div class="num" style="color:#3C8F5C">'+sV+'</div><div class="lbl">\ud83d\udfe2 Cerrados</div></div></div>';
     c.innerHTML=barraAdmin()+(h||'<p style="color:var(--steel)">No hay casos con este filtro.</p>');
@@ -1026,7 +1061,14 @@ function verFoto(code){
 function asignarTec(code){
   var n=prompt('Nombre del técnico:');if(!n)return;
   var w=prompt('WhatsApp del técnico (solo números, ej: 3001234567):');if(!w)return;
-  fetch(conLlave('/casos/'+code+'.json')).then(function(r){return r.json()}).then(function(caso){
+  Promise.all([
+    fetch(conLlave('/casos/'+code+'.json')).then(function(r){return r.json()}),
+    fetch(conLlave('/contactos/'+code+'.json')).then(function(r){ return r.ok?r.json():null; }).catch(function(){return null;})
+  ]).then(function(par){
+    var caso=par[0]||{}, ct=par[1]||{};
+    caso.direccion=ct.direccion||'—';
+    caso.cliente=ct.cliente||'—';
+    caso.ubicacionLink=ct.ubicacionLink||'';
     return fetch(conLlave('/casos/'+code+'.json'),{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({estado:'amarillo',tecnico:n,tecnicoWa:w})}).then(function(){
       var msjTec='CASO ASIGNADO - Mi Ferretería\nCaso: '+code+'\n'+caso.categoria+'\n'+caso.dano+'\nDirección: '+caso.direccion+'\nCliente: '+caso.cliente+(caso.ubicacionLink?'\nUbicación: '+caso.ubicacionLink:'')+'\nContacta al cliente para coordinar.';
       window.open('https://wa.me/57'+w+'?text='+encodeURIComponent(msjTec),'_blank');
@@ -1183,24 +1225,203 @@ function resetCliente(){
 function openWazeStore(){ window.open('https://waze.com/ul?q=' + encodeURIComponent('Carrera 7 # 20-63, Jamundí, Valle') + '&navigate=yes', '_blank'); }
 function pedidoWhatsapp(){ const msg = encodeURIComponent('Hola, quiero pedir repuestos o materiales en Mi Ferretería.'); window.open('https://wa.me/573162100289?text=' + msg, '_blank'); }
 
-let credits = 12;
-function updateCredits(){ document.getElementById('credit-num').innerText = credits; }
-function takeCase(btn, id){
-  if(credits <= 0){ alert('Sin créditos. Compra más para tomar casos.'); return; }
-  credits -= 1; updateCredits();
-  const row = btn.closest('.case-row'); const wazeUrl = row.getAttribute('data-waze') || '';
-  row.remove();
-  const activeBox = document.getElementById('tech-active');
-  if(activeBox.querySelector('p')) activeBox.innerHTML = '';
-  const phone = '57315222' + (1000+id);
-  const div = document.createElement('div'); div.className = 'case-row active-case';
-  div.innerHTML = `<div class="case-info"><div class="ic">✓</div><div><b>Caso #${id} tomado</b><div class="sub"><a href="https://wa.me/${phone}" target="_blank" class="wa-link">💬 Chatear con cliente</a></div>${wazeUrl ? `<a href="${wazeUrl}" target="_blank" class="waze-link">📍 Waze</a>` : ''}</div></div><button class="btn btn-primary" onclick="completeCase(this)">Completado</button>`;
-  activeBox.appendChild(div);
+/* ============ Vista del tecnico, con datos de verdad ============ */
+var tecToken=sessionStorage.getItem('mf_tec_token')||'';
+var tecUid=sessionStorage.getItem('mf_tec_uid')||'';
+var tecFicha=null;
+
+function conLlaveTec(ruta){
+  if(!tecToken) return FBURL+ruta;
+  return FBURL+ruta+(ruta.indexOf('?')>-1?'&':'?')+'auth='+tecToken;
 }
-function completeCase(btn){ btn.closest('.case-row').querySelector('button').outerHTML = '<span class="badge verificado">✓ COMPLETADO</span>'; }
+
+function iniciarVistaTecnico(){
+  if(!tecToken||!tecUid){ mostrarLoginTecnico(); return; }
+  cargarFichaTecnico();
+}
+
+function mostrarLoginTecnico(msg){
+  var p=document.getElementById('tec-panel'); if(p) p.style.display='none';
+  var c=document.getElementById('tec-login'); if(!c) return;
+  c.style.display='block';
+  c.innerHTML='<div class="card" style="max-width:360px;margin:0 auto;text-align:center">'+
+    '<p style="font-size:14px;font-weight:700;margin:0 0 4px">Entrada para técnicos</p>'+
+    '<p style="font-size:12px;color:var(--steel);margin:0 0 14px">Usa el correo y la contraseña que te dio Mi Ferretería.</p>'+
+    '<div class="form-row"><input type="email" id="tec-login-correo" placeholder="Correo"></div>'+
+    '<div class="form-row"><input type="password" id="tec-login-clave" placeholder="Contraseña"></div>'+
+    '<button class="btn btn-primary btn-block" onclick="entrarTecnico()">Entrar</button>'+
+    (msg?'<p style="color:var(--rust);font-size:12px;font-weight:600;margin:12px 0 0">'+msg+'</p>':'')+
+    '</div>';
+}
+
+function entrarTecnico(){
+  var correo=(document.getElementById('tec-login-correo')||{}).value||'';
+  var clave=(document.getElementById('tec-login-clave')||{}).value||'';
+  correo=correo.trim();
+  if(!correo||!clave){ mostrarLoginTecnico('Escribe tu correo y tu contraseña.'); return; }
+  document.getElementById('tec-login').innerHTML='<p style="color:var(--steel);text-align:center">Entrando...</p>';
+  fetch('https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key='+FB_API_KEY,{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({email:correo,password:clave,returnSecureToken:true})
+  }).then(function(r){return r.json()}).then(function(d){
+    if(!d||!d.idToken){ mostrarLoginTecnico('Correo o contraseña incorrectos.'); return; }
+    tecToken=d.idToken; tecUid=d.localId;
+    sessionStorage.setItem('mf_tec_token',tecToken);
+    sessionStorage.setItem('mf_tec_uid',tecUid);
+    cargarFichaTecnico();
+  }).catch(function(){ mostrarLoginTecnico('No se pudo conectar. Revisa tu conexión.'); });
+}
+
+function salirTecnico(msg){
+  tecToken=''; tecUid=''; tecFicha=null;
+  sessionStorage.removeItem('mf_tec_token');
+  sessionStorage.removeItem('mf_tec_uid');
+  mostrarLoginTecnico(msg);
+}
+
+function cargarFichaTecnico(){
+  fetch(conLlaveTec('/tecnicos/'+tecUid+'.json')).then(function(r){
+    if(r.status===401||r.status===403) throw new Error('sesion');
+    if(!r.ok) throw new Error('respuesta '+r.status);
+    return r.json();
+  }).then(function(f){
+    if(!f){ salirTecnico('Esa cuenta todavía no está afiliada como técnico. Habla con Mi Ferretería.'); return; }
+    if(!f.activo){ salirTecnico('Tu cuenta está desactivada. Habla con Mi Ferretería.'); return; }
+    tecFicha=f;
+    document.getElementById('tec-login').style.display='none';
+    document.getElementById('tec-panel').style.display='block';
+    document.getElementById('tec-nombre-h').textContent=f.nombre||'Técnico';
+    var of=[]; for(var o in (f.oficios||{})){ if(f.oficios[o]) of.push(o); }
+    document.getElementById('tec-oficios-h').textContent=of.length?of.join(' · '):'Sin oficios asignados';
+    document.getElementById('credit-num').textContent=(f.creditos||0);
+    cargarCasosTecnico();
+  }).catch(function(err){
+    salirTecnico(err.message==='sesion'?'Tu sesión venció. Vuelve a entrar.':'No se pudo cargar tu ficha: '+err.message);
+  });
+}
+
+function cargarCasosTecnico(){
+  var disp=document.getElementById('tech-available');
+  var act=document.getElementById('tech-active');
+  if(!disp||!act) return;
+  disp.innerHTML='<p style="color:var(--steel);font-size:12px">Cargando...</p>';
+  act.innerHTML='';
+  fetch(conLlaveTec('/casos.json')).then(function(r){
+    if(r.status===401||r.status===403) throw new Error('sesion');
+    if(!r.ok) throw new Error('respuesta '+r.status);
+    return r.json();
+  }).then(function(data){
+    var mios=(tecFicha&&tecFicha.oficios)||{};
+    var hD='', hA='', nD=0, nA=0;
+    var lista=[];
+    for(var k in data){ if(data.hasOwnProperty(k)) lista.push(data[k]); }
+    lista.sort(function(a,b){ return (b.fecha||'')>(a.fecha||'')?1:-1; });
+    for(var i=0;i<lista.length;i++){
+      var c=lista[i];
+      if(c.estado==='rojo' && mios[c.categoria]){ hD+=filaDisponible(c); nD++; }
+      else if(c.estado==='amarillo' && c.tecnicoUid===tecUid){ hA+=filaActiva(c); nA++; }
+    }
+    disp.innerHTML = nD ? hD : '<p style="color:var(--steel);font-size:12px">Ahora mismo no hay casos para tus oficios. Te avisamos cuando entre uno.</p>';
+    act.innerHTML = nA ? hA : '<p style="color:var(--steel);font-size:12px">Aún no has tomado ningún caso.</p>';
+    for(var j=0;j<lista.length;j++){
+      if(lista[j].estado==='amarillo' && lista[j].tecnicoUid===tecUid) pedirContacto(lista[j].codigo);
+    }
+  }).catch(function(err){
+    if(err.message==='sesion'){ salirTecnico('Tu sesión venció. Vuelve a entrar.'); return; }
+    disp.innerHTML='<p style="color:var(--rust);font-weight:600;font-size:12px">No se pudieron cargar los casos: '+err.message+'</p>';
+  });
+}
+
+function cuandoFue(f){
+  if(!f) return '';
+  var m=Math.floor((Date.now()-new Date(f).getTime())/60000);
+  if(m<1) return 'recién';
+  return 'hace '+textoEspera(m);
+}
+
+function filaDisponible(c){
+  var foto = c.tieneFoto ? '<button class="btn btn-ghost" style="font-size:11px;padding:6px 10px;margin-right:6px" onclick="verFotoTec(\x27'+c.codigo+'\x27)">Ver foto</button>' : '';
+  return '<div class="case-row"><div class="case-info"><div>'+
+    '<b>'+escapar(c.categoria)+'</b>'+
+    '<div class="sub">'+escapar(c.dano||'')+'</div>'+
+    '<div class="sub">Zona: <b>'+escapar(c.zona||'sin zona')+'</b></div>'+
+    '<div class="sub">'+cuandoFue(c.fecha)+'</div>'+
+    '</div></div><div style="text-align:right">'+foto+
+    '<button class="btn btn-primary" onclick="tomarCaso(\x27'+c.codigo+'\x27)">Tomar este caso</button></div></div>';
+}
+
+function filaActiva(c){
+  return '<div class="case-row active-case" id="act-'+c.codigo+'"><div class="case-info"><div>'+
+    '<b>'+escapar(c.codigo)+'</b> — '+escapar(c.categoria)+
+    '<div class="sub">'+escapar(c.dano||'')+'</div>'+
+    '<div class="sub">Zona: '+escapar(c.zona||'sin zona')+'</div>'+
+    '<div class="sub" id="ct-'+c.codigo+'" style="color:var(--steel)">Abriendo datos de contacto...</div>'+
+    '</div></div></div>';
+}
+
+// Los datos de contacto solo se abren para el tecnico que tomo el caso.
+function pedirContacto(code){
+  fetch(conLlaveTec('/contactos/'+code+'.json')).then(function(r){
+    if(!r.ok) throw new Error('sin acceso');
+    return r.json();
+  }).then(function(ct){
+    var d=document.getElementById('ct-'+code);
+    if(!d) return;
+    if(!ct){ d.textContent='Sin datos de contacto.'; return; }
+    var wa=String(ct.celular||'').replace(/[^0-9]/g,'');
+    var msj=encodeURIComponent('Hola, soy el técnico de TODERO para tu caso '+code+'. ¿Cuándo te queda bien que pase?');
+    var h='<div><b>'+escapar(ct.cliente||'')+'</b></div>'+
+      '<div>'+escapar(ct.direccion||'')+'</div>'+
+      '<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">'+
+      (wa?'<a class="btn" style="background:var(--wa);color:#fff;text-decoration:none;font-size:11px;padding:7px 12px" target="_blank" href="https://wa.me/57'+wa+'?text='+msj+'">Escribirle por WhatsApp</a>':'')+
+      (ct.ubicacionLink?'<a class="btn btn-ghost" style="text-decoration:none;font-size:11px;padding:7px 12px" target="_blank" href="'+ct.ubicacionLink+'">Ir con Waze</a>':'')+
+      '</div>';
+    d.innerHTML=h;
+    d.style.color='var(--charcoal)';
+  }).catch(function(){
+    var d=document.getElementById('ct-'+code);
+    if(d) d.textContent='No se pudieron abrir los datos de contacto.';
+  });
+}
+
+function tomarCaso(code){
+  if(!tecFicha) return;
+  if(!confirm('¿Tomar el caso '+code+'? Se te abrirán los datos del cliente.')) return;
+  fetch(conLlaveTec('/casos/'+code+'.json'),{method:'PATCH',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({estado:'amarillo',tecnico:tecFicha.nombre,tecnicoWa:tecFicha.celular,tecnicoUid:tecUid})
+  }).then(function(r){
+    if(!r.ok) throw new Error('Puede que otro técnico lo haya tomado primero.');
+    cargarCasosTecnico();
+  }).catch(function(err){ alert('No se pudo tomar el caso. '+err.message); });
+}
+
+function verFotoTec(code){
+  var ov=document.getElementById('foto-overlay');
+  if(!ov){
+    ov=document.createElement('div');
+    ov.id='foto-overlay';
+    ov.style.cssText='position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.85);'+
+      'display:flex;align-items:center;justify-content:center;flex-direction:column;padding:20px;gap:14px';
+    ov.addEventListener('click',function(){ ov.style.display='none'; });
+    document.body.appendChild(ov);
+  }
+  ov.style.display='flex';
+  ov.innerHTML='<p style="color:#fff;font-family:sans-serif">Cargando foto...</p>';
+  fetch(FBURL+'/fotos/'+code+'.json').then(function(r){return r.json()}).then(function(foto){
+    if(!foto){ ov.innerHTML='<p style="color:#fff;font-family:sans-serif">Este caso no tiene foto.</p>'; return; }
+    ov.innerHTML='<img src="'+foto+'" style="max-width:100%;max-height:80vh;border-radius:8px;border:4px solid #fff">'+
+      '<p style="color:#fff;font-family:sans-serif;font-size:13px;margin:0">Toca para cerrar</p>';
+  }).catch(function(){
+    ov.innerHTML='<p style="color:#fff;font-family:sans-serif">No se pudo cargar la foto.</p>';
+  });
+}
+
 function openPkg(){ document.getElementById('pkg-overlay').classList.add('on'); }
 function closePkg(){ document.getElementById('pkg-overlay').classList.remove('on'); }
-function buyPkg(n){ credits += n; updateCredits(); closePkg(); }
+function buyPkg(n){
+  closePkg();
+  alert('La compra de créditos todavía no está activa. Habla con Mi Ferretería.');
+}
 // Las pestanas de Tecnico y Negocio no son para el cliente. Se destapan
 // entrando una vez con ?admin=1 y este aparato lo recuerda; con ?admin=0
 // se vuelven a esconder. Lo que protege los datos es el login del panel,
