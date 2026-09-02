@@ -65,7 +65,7 @@
 :root{
   --stone:#E7E2D6; --stone-dark:#D8D2C2; --charcoal:#22262A; --steel:#57626C;
   --yellow:#F2B705; --rust:#B23A2E; --teal:#2F6F63; --paper:#F7F4EC;
-  --roja:#C43D2E; --amarilla:#F2B705; --verde:#3C8F5C; --wa:#25D366;
+  --roja:#C43D2E; --amarilla:#F2B705; --verde:#3C8F5C; --morada:#7A4FBF; --wa:#25D366;
 }
 *{box-sizing:border-box;}
 body{margin:0;font-family:'IBM Plex Sans',sans-serif;color:var(--charcoal);
@@ -160,6 +160,8 @@ header{display:flex;align-items:center;justify-content:space-between;flex-wrap:w
 .piloto.roja{background:var(--roja);animation:pulse-r 1.4s infinite;}
 .piloto.amarilla{background:var(--amarilla);animation:pulse-y 1.4s infinite;}
 .piloto.verde{background:var(--verde);}
+.piloto.morada{background:var(--morada);animation:pulse-m 1.4s infinite;}
+@keyframes pulse-m{0%,100%{box-shadow:0 0 0 0 rgba(122,79,191,.5),inset 0 0 0 4px rgba(0,0,0,.15);}50%{box-shadow:0 0 0 10px rgba(122,79,191,0),inset 0 0 0 4px rgba(0,0,0,.15);}}
 @keyframes pulse-r{0%,100%{box-shadow:0 0 0 0 rgba(196,61,46,.5),inset 0 0 0 4px rgba(0,0,0,.15);}50%{box-shadow:0 0 0 10px rgba(196,61,46,0),inset 0 0 0 4px rgba(0,0,0,.15);}}
 @keyframes pulse-y{0%,100%{box-shadow:0 0 0 0 rgba(242,183,5,.5),inset 0 0 0 4px rgba(0,0,0,.15);}50%{box-shadow:0 0 0 10px rgba(242,183,5,0),inset 0 0 0 4px rgba(0,0,0,.15);}}
 .semaforo-text .estado{font-family:'Bebas Neue';font-size:20px;letter-spacing:.3px;margin:0;}
@@ -334,7 +336,7 @@ tr:last-child td{border-bottom:none;}
       </div>
       </div>
 
-      <div style="text-align:center;margin-bottom:16px"><button class="btn btn-ghost" onclick="mostrarConsulta()">📋 Ya tengo un caso — consultar estado</button></div>
+      <div style="text-align:center;margin-bottom:16px"><button class="btn btn-ghost" id="btn-mi-caso" onclick="mostrarConsulta()">📋 Ya tengo un caso — consultar estado</button></div>
 
       <div class="repuestos-bar">
         <span>¿Necesitas repuestos? Solicítalos en Mi Ferretería</span>
@@ -368,6 +370,7 @@ tr:last-child td{border-bottom:none;}
         <div id="sem-rojo" class="piloto roja"></div>
         <div id="sem-amarillo" class="piloto amarilla" style="display:none"></div>
         <div id="sem-verde" class="piloto verde" style="display:none"></div>
+        <div id="sem-morado" class="piloto morada" style="display:none"></div>
         <div class="semaforo-text">
           <p class="estado" id="estado-txt">Buscando técnico...</p>
           <p class="detalle" id="estado-detalle">Tu caso ya está publicado para <span id="cat-elegida"></span>.</p>
@@ -560,11 +563,26 @@ function actualizarSemaforo(c,code){
   document.getElementById('sem-rojo').style.display='none';
   document.getElementById('sem-amarillo').style.display='none';
   document.getElementById('sem-verde').style.display='none';
+  document.getElementById('sem-morado').style.display='none';
   if(c.estado==='rojo'){
-    document.getElementById('sem-rojo').style.display='block';
-    et.textContent='Buscando técnico...';
-    ed.textContent='Caso '+code+' publicado para '+c.categoria+'.';
     document.getElementById('btn-cerrar-caso').style.display='none';
+    var espera=minutosEsperando(c);
+    if(espera>=MINUTOS_MORADO && Date.now()>esperarHasta){
+      document.getElementById('sem-morado').style.display='block';
+      et.textContent='Aún no hay técnico disponible';
+      ed.textContent='Tu caso lleva '+textoEspera(espera)+' publicado y ningún técnico de '+c.categoria+' lo ha tomado todavía.';
+      rb.innerHTML=cajaMorada(code);
+    } else {
+      document.getElementById('sem-rojo').style.display='block';
+      et.textContent='Buscando técnico...';
+      ed.textContent='Caso '+code+' publicado para '+c.categoria+'.';
+    }
+  } else if(c.estado==='cerrado'){
+    document.getElementById('sem-morado').style.display='block';
+    et.textContent='Caso cerrado';
+    ed.textContent='Cerraste este caso. Puedes crear una solicitud nueva cuando quieras.';
+    document.getElementById('btn-cerrar-caso').style.display='none';
+    if(semaforoInterval)clearInterval(semaforoInterval);
   } else if(c.estado==='amarillo'){
     document.getElementById('sem-amarillo').style.display='block';
     et.textContent='¡Un técnico tomó tu caso!';
@@ -578,6 +596,68 @@ function actualizarSemaforo(c,code){
     document.getElementById('btn-cerrar-caso').style.display='none';
     if(semaforoInterval)clearInterval(semaforoInterval);
   }
+}
+
+var MINUTOS_MORADO=15;
+var esperarHasta=0;
+
+function minutosEsperando(c){
+  if(!c||!c.fecha)return 0;
+  var t=new Date(c.fecha).getTime();
+  if(isNaN(t))return 0;
+  var m=Math.floor((Date.now()-t)/60000);
+  return m>0?m:0;
+}
+
+function textoEspera(min){
+  if(min<60)return min+' minutos';
+  var h=Math.floor(min/60);
+  if(h<24)return h===1?'una hora':h+' horas';
+  var d=Math.floor(h/24);
+  return d===1?'un día':d+' días';
+}
+
+function cajaMorada(code){
+  var msj=encodeURIComponent('Hola Mi Ferretería, mi caso '+code+' lleva rato publicado y ningún técnico lo ha tomado. ¿Me pueden ayudar?');
+  return '<div style="text-align:center">'+
+    '<p style="font-size:12.5px;color:var(--steel);margin:0 0 12px">Puede que los técnicos de esa especialidad estén ocupados. ¿Qué quieres hacer?</p>'+
+    '<button class="btn btn-primary btn-block" onclick="seguirEsperando()">Seguir esperando</button>'+
+    '<a href="https://wa.me/573244779393?text='+msj+'" target="_blank" class="btn btn-block" style="display:block;margin-top:8px;text-decoration:none;background:var(--wa);color:#fff">Escribirle a Mi Ferretería</a>'+
+    '<button class="btn btn-ghost btn-block" style="margin-top:8px" onclick="cancelarCaso()">Cerrar este caso</button>'+
+  '</div>';
+}
+
+function seguirEsperando(){
+  esperarHasta=Date.now()+MINUTOS_MORADO*60000;
+  document.getElementById('sem-morado').style.display='none';
+  document.getElementById('sem-rojo').style.display='block';
+  document.getElementById('estado-txt').textContent='Buscando técnico...';
+  document.getElementById('estado-detalle').textContent='Seguimos buscando. Te avisamos apenas alguien tome tu caso.';
+  document.getElementById('reveal-box').innerHTML='';
+}
+
+function cancelarCaso(){
+  if(!currentCaseCode)return;
+  if(!confirm('¿Cerrar el caso '+currentCaseCode+'? Después podrás crear una solicitud nueva.'))return;
+  fetch(FBURL+'/casos/'+currentCaseCode+'.json',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({estado:'cerrado'})})
+  .then(function(){resetCliente();})
+  .catch(function(){alert('No se pudo cerrar el caso. Revisa tu conexión e inténtalo otra vez.');});
+}
+
+function verMiCaso(){
+  var code=localStorage.getItem('mf_last_case');
+  if(!code){mostrarConsulta();return;}
+  document.getElementById('consultar-code').value=code;
+  document.getElementById('cliente-form').style.display='none';
+  consultarCaso();
+}
+
+function restaurarBotonMiCaso(){
+  var btn=document.getElementById('btn-mi-caso');
+  if(!btn)return;
+  btn.className='btn btn-ghost';
+  btn.textContent='📋 Ya tengo un caso — consultar estado';
+  btn.setAttribute('onclick','mostrarConsulta()');
 }
 
 function startPolling(code){
@@ -605,12 +685,13 @@ function loadAdminCases(){
     var sR=0,sA=0,sV=0,h='';
     for(var i=0;i<arr.length;i++){
       var x=arr[i];
-      if(x.estado==='rojo')sR++;else if(x.estado==='amarillo')sA++;else sV++;
+      if(x.estado==='rojo')sR++;else if(x.estado==='amarillo')sA++;else if(x.estado==='verde')sV++;
       if(filtroActual!=='todos'&&x.estado!==filtroActual)continue;
-      var col=x.estado==='rojo'?'#C43D2E':x.estado==='amarillo'?'#F2B705':'#3C8F5C';
+      var col=x.estado==='rojo'?'#C43D2E':x.estado==='amarillo'?'#F2B705':x.estado==='cerrado'?'#7A4FBF':'#3C8F5C';
       var act='';
       if(x.estado==='rojo')act='<button class="btn btn-primary" onclick="asignarTec(\x27'+x.codigo+'\x27)">Asignar técnico</button>';
       else if(x.estado==='amarillo')act='<button class="btn btn-primary" onclick="completarCaso(\x27'+x.codigo+'\x27)">Completado</button>';
+      else if(x.estado==='cerrado')act='<span class="badge">Cancelado por el cliente</span>';
       else act='<span class="badge verificado">\u2713 Cerrado</span>';
       var fechaTxt='';
       if(x.fecha){var d=new Date(x.fecha);fechaTxt=d.toLocaleDateString('es-CO')+' '+d.toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'});}
@@ -676,24 +757,27 @@ function consultarCaso(){
 
 function checkLastCase(){
   var lastCode=localStorage.getItem('mf_last_case');
-  if(!lastCode)return;
+  if(!lastCode){restaurarBotonMiCaso();return;}
   fetch(FBURL+'/casos/'+lastCode+'.json').then(function(r){return r.json()}).then(function(caso){
-    if(!caso){localStorage.removeItem('mf_last_case');return;}
-    if(caso.estado==='verde'){localStorage.removeItem('mf_last_case');return;}
-    var banner=document.createElement('div');
-    banner.className='card';
-    banner.style.cssText='text-align:center;margin-bottom:14px;border-color:var(--yellow)';
-    var p=document.createElement('p');
-    p.style.cssText='margin:0 0 8px;font-size:13px';
-    p.innerHTML='<b>Tienes un caso activo:</b> '+lastCode;
-    var btn=document.createElement('button');
+    if(!caso||caso.estado==='verde'||caso.estado==='cerrado'){
+      localStorage.removeItem('mf_last_case');
+      restaurarBotonMiCaso();
+      return;
+    }
+    // Nada de avisos encima de las categorias: el boton que ya existe muestra el estado.
+    var btn=document.getElementById('btn-mi-caso');
+    if(!btn)return;
+    var color,texto;
+    if(caso.estado==='amarillo'){
+      color='var(--amarilla)'; texto='Un técnico tomó tu caso';
+    } else if(minutosEsperando(caso)>=MINUTOS_MORADO){
+      color='var(--morada)'; texto='Aún sin técnico';
+    } else {
+      color='var(--roja)'; texto='Buscando técnico';
+    }
     btn.className='btn btn-primary';
-    btn.textContent='Ver estado de mi caso';
-    btn.addEventListener('click',function(){banner.remove();document.getElementById('consultar-code').value=lastCode;consultarCaso();});
-    banner.appendChild(p);
-    banner.appendChild(btn);
-    var form=document.getElementById('cliente-form');
-    form.insertBefore(banner,form.firstChild);
+    btn.innerHTML='<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:'+color+';margin-right:8px;vertical-align:middle"></span>Tu caso '+lastCode+' · '+texto;
+    btn.setAttribute('onclick','verMiCaso()');
   }).catch(function(){});
 }
 
@@ -751,6 +835,9 @@ function resetCliente(){
   document.getElementById('sem-rojo').style.display='block';
   document.getElementById('sem-amarillo').style.display='none';
   document.getElementById('sem-verde').style.display='none';
+  document.getElementById('sem-morado').style.display='none';
+  esperarHasta=0;
+  restaurarBotonMiCaso();
   document.getElementById('btn-cerrar-caso').style.display='none';
   document.getElementById('reveal-box').innerHTML='';
   document.getElementById('estado-txt').textContent='Buscando técnico...';
